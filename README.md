@@ -87,7 +87,38 @@ cmake --preset linux-dev
 cmake --build --preset linux-dev --parallel
 ```
 
-### Windows x64 release
+### Windows x64 release (MSYS2 MinGW64)
+
+The repository includes a Windows-native preset for MSYS2 MinGW64. It builds
+with GCC/Ninja and uses the Qt and libssh packages installed in the matching
+MSYS2 environment. Visual Studio is not required. The preset defaults to
+`C:\msys64\mingw64`; if MSYS2 is installed elsewhere, update `MINGW_ROOT` in
+`CMakePresets.json`.
+
+Install the MINGW64 packages for GCC, CMake, Ninja, pkgconf, libssh, and the
+Qt 6 modules used by the app (Core, Gui, Qml, Quick, and Quick Controls 2).
+Then, on Windows, configure the project and build/run it using the
+`windows-mingw64` configure preset in VS Code's CMake Tools extension. To
+build from a terminal:
+
+```powershell
+cmake --preset windows-mingw64
+cmake --build --preset windows-mingw64
+```
+
+In VS Code, select `windows-mingw64` as the configure preset. CMake Tools can
+then build and launch `ScriptExecutorApp.exe` using its normal Build and Launch
+Target commands. The packaged app is built with:
+
+```powershell
+cmake --build --preset windows-mingw64-package
+```
+
+The package target deploys Qt/QML plugins and runtime DLL dependencies into
+`build\windows-mingw64\windows-package\`. Distribute the whole folder (or zip
+it), not just the executable.
+
+### Windows x64 release (Visual Studio/MSVC)
 
 Install Visual Studio 2022 with the **Desktop development with C++** workload,
 CMake 3.21 or newer, Qt 6 for the **MSVC 2022 64-bit** compiler, and vcpkg.

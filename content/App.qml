@@ -422,15 +422,44 @@ ApplicationWindow {
             property string pendingAnsiSequence: ""
             property var pendingOutputChunks: []
             property var outputSegments: []
+            property int outputColumn: 0
 
-            function escapeOutputHtml(text) {
-                return String(text)
-                        .replace(/&/g, "&amp;")
-                        .replace(/</g, "&lt;")
-                        .replace(/>/g, "&gt;")
-                        .replace(/\r\n?/g, "<br/>")
-                        .replace(/\n/g, "<br/>")
-                        .replace(/ /g, "&nbsp;")
+            function escapeOutputHtml(text, startingColumn) {
+                const value = String(text)
+                const tabWidth = 8
+                let column = startingColumn
+                let html = ""
+
+                for (let i = 0; i < value.length; i++) {
+                    const character = value[i]
+                    if (character === "\r") {
+                        if (i + 1 < value.length && value[i + 1] === "\n")
+                            i += 1
+                        html += "<br/>"
+                        column = 0
+                    } else if (character === "\n") {
+                        html += "<br/>"
+                        column = 0
+                    } else if (character === "\t") {
+                        const spaces = tabWidth - (column % tabWidth)
+                        html += "&nbsp;".repeat(spaces)
+                        column += spaces
+                    } else {
+                        if (character === "&")
+                            html += "&amp;"
+                        else if (character === "<")
+                            html += "&lt;"
+                        else if (character === ">")
+                            html += "&gt;"
+                        else if (character === " ")
+                            html += "&nbsp;"
+                        else
+                            html += character
+                        column += 1
+                    }
+                }
+
+                return { html: html, column: column }
             }
 
             function formatOutputChunk(text) {
@@ -478,15 +507,17 @@ ApplicationWindow {
                 let segment = ""
                 let html = ""
                 let plain = ""
+                let outputColumn = dashboardRoot.outputColumn
 
                 function flushSegment() {
                     if (segment.length === 0)
                         return
 
-                    const escaped = escapeOutputHtml(segment)
+                    const escaped = escapeOutputHtml(segment, outputColumn)
                     html += "<span style=\"color:" +
                             (color || dashboardRoot.outputTextColor) + "\">" +
-                            escaped + "</span>"
+                            escaped.html + "</span>"
+                    outputColumn = escaped.column
                     segment = ""
                 }
 
@@ -550,6 +581,7 @@ ApplicationWindow {
 
                 flushSegment()
                 outputAnsiColor = color
+                dashboardRoot.outputColumn = outputColumn
                 return { html: html, plain: plain }
             }
 
@@ -646,6 +678,7 @@ ApplicationWindow {
                 outputHtml = ""
                 outputPlainText = ""
                 outputAnsiColor = ""
+                outputColumn = 0
                 pendingAnsiSequence = ""
                 commandOutput.text = "<span></span>"
                 commandOutputScroll.contentItem.contentX = 0
@@ -1509,7 +1542,8 @@ ApplicationWindow {
                                         height: Math.max(commandOutputScroll.availableHeight, contentHeight)
                                         textFormat: TextEdit.RichText
                                         text: "<span></span>"
-                                        font.family: "monospace"
+                                        font.family: Qt.platform.os === "windows"
+                                                      ? "Consolas" : "monospace"
                                         color: dashboardRoot.outputTextColor
                                         readOnly: true
                                         selectByMouse: true

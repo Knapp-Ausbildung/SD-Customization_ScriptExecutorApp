@@ -23,7 +23,33 @@
         "CMAKE_PREFIX_PATH": "$env{QT_ROOT}",
         "VCPKG_TARGET_TRIPLET": "x64-windows",
         "BUILD_QDS_COMPONENTS": "ON",
-        "LINK_INSIGHT": "OFF"
+        "LINK_INSIGHT": "OFF",
+        "FETCHCONTENT_UPDATES_DISCONNECTED": "ON"
+      }
+    },
+    {
+      "name": "windows-mingw64",
+      "displayName": "Windows x64 (MSYS2 MinGW64)",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/windows-mingw64",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
+      },
+      "environment": {
+        "MINGW_ROOT": "C:/msys64/mingw64",
+        "PATH": "$env{MINGW_ROOT}/bin;$penv{PATH}"
+      },
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_CXX_COMPILER": "$env{MINGW_ROOT}/bin/g++.exe",
+        "CMAKE_MAKE_PROGRAM": "$env{MINGW_ROOT}/bin/ninja.exe",
+        "CMAKE_PREFIX_PATH": "$env{MINGW_ROOT}",
+        "PKG_CONFIG_EXECUTABLE": "$env{MINGW_ROOT}/bin/pkg-config.exe",
+        "BUILD_QDS_COMPONENTS": "ON",
+        "LINK_INSIGHT": "OFF",
+        "FETCHCONTENT_UPDATES_DISCONNECTED": "ON"
       }
     }
   ],
@@ -35,6 +61,19 @@
     {
       "name": "windows-release",
       "configurePreset": "windows-release",
+      "configuration": "Release",
+      "targets": [
+        "package_windows"
+      ]
+    },
+    {
+      "name": "windows-mingw64",
+      "configurePreset": "windows-mingw64",
+      "configuration": "Release"
+    },
+    {
+      "name": "windows-mingw64-package",
+      "configurePreset": "windows-mingw64",
       "configuration": "Release",
       "targets": [
         "package_windows"

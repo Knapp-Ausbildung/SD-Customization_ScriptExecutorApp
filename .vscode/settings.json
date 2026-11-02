@@ -1,1 +1,8 @@
-{}
+{
+  "cmake.useCMakePresets": "always",
+  "cmake.configureOnOpen": true,
+  "cmake.cmakePath": "C:\\msys64\\mingw64\\bin\\cmake.exe",
+  "cmake.configurePreset": "windows-mingw64",
+  "cmake.buildPreset": "windows-mingw64",
+  "C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools"
+}

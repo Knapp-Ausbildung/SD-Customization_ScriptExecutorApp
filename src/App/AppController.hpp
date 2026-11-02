@@ -169,6 +169,7 @@ private:
   QString m_repositoryTypePendingInstall;
   bool m_repositoryInstallOfferPending = false;
   bool m_installingDownloadedRepository = false;
+  bool m_statusCommandPending = false;
 
   bool isKiSoftOneActive() const;
 

@@ -9,7 +9,11 @@ set(CMAKE_AUTOMOC ON)
 
 find_package(Qt6 6.2 REQUIRED COMPONENTS Core Gui Qml Quick)
 
-if (WIN32)
+if (MINGW)
+    find_package(PkgConfig REQUIRED)
+    pkg_check_modules(LIBSSH REQUIRED IMPORTED_TARGET libssh)
+    set(SCRIPT_EXECUTOR_LIBSSH_TARGET PkgConfig::LIBSSH)
+elseif (WIN32)
     find_package(libssh CONFIG REQUIRED)
     if (TARGET ssh)
         set(SCRIPT_EXECUTOR_LIBSSH_TARGET ssh)
@@ -50,6 +54,12 @@ qt_add_resources(ScriptExecutorApp "configuration"
         qtquickcontrols2.conf
 )
 
+if (WIN32)
+    set_target_properties(ScriptExecutorApp PROPERTIES
+        WIN32_EXECUTABLE TRUE
+    )
+endif()
+
 target_link_libraries(ScriptExecutorApp PRIVATE
     Qt6::Core
     Qt6::Gui
@@ -72,6 +82,18 @@ set(QML_IMPORT_PATH ${QT_QML_OUTPUT_DIRECTORY}
 )
 
 if (BUILD_QDS_COMPONENTS)
+    # Reuse the checked-out Qt Design Studio components during local builds.
+    # The initial FetchContent download still works when the source is missing.
+    set(FETCHCONTENT_UPDATES_DISCONNECTED ON CACHE BOOL
+        "Do not update already downloaded FetchContent dependencies" FORCE)
+    set(FETCHCONTENT_UPDATES_DISCONNECTED_DS ON CACHE BOOL
+        "Do not update the Qt Design Studio components" FORCE)
+    if (EXISTS "${CMAKE_BINARY_DIR}/_deps/ds-src")
+        set(FETCHCONTENT_FULLY_DISCONNECTED ON CACHE BOOL
+            "Do not download or update FetchContent dependencies" FORCE)
+        set(FETCHCONTENT_FULLY_DISCONNECTED_DS ON CACHE BOOL
+            "Do not download or update the Qt Design Studio components" FORCE)
+    endif()
     include(${CMAKE_CURRENT_SOURCE_DIR}/qmlcomponents)
 endif()
 
@@ -82,13 +104,32 @@ if (LINK_INSIGHT)
 endif ()
 
 include(GNUInstallDirs)
-install(TARGETS ScriptExecutorApp
-    BUNDLE DESTINATION .
-    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
-    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
-)
-
 if (WIN32)
+    set(SCRIPT_EXECUTOR_RUNTIME_DIRECTORIES)
+    if (DEFINED ENV{MINGW_ROOT})
+        list(APPEND SCRIPT_EXECUTOR_RUNTIME_DIRECTORIES "$ENV{MINGW_ROOT}/bin")
+    endif()
+    foreach(QT_PREFIX IN LISTS CMAKE_PREFIX_PATH)
+        list(APPEND SCRIPT_EXECUTOR_RUNTIME_DIRECTORIES "${QT_PREFIX}/bin")
+    endforeach()
+    if (DEFINED VCPKG_INSTALLED_DIR AND DEFINED VCPKG_TARGET_TRIPLET)
+        list(APPEND SCRIPT_EXECUTOR_RUNTIME_DIRECTORIES
+            "${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/bin")
+    endif()
+
+    install(TARGETS ScriptExecutorApp
+        RUNTIME_DEPENDENCY_SET ScriptExecutorRuntime
+        BUNDLE DESTINATION .
+        LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+        RUNTIME DESTINATION .
+    )
+    install(RUNTIME_DEPENDENCY_SET ScriptExecutorRuntime
+        DESTINATION .
+        DIRECTORIES ${SCRIPT_EXECUTOR_RUNTIME_DIRECTORIES}
+        PRE_EXCLUDE_REGEXES "api-ms-win-.*" "ext-ms-.*"
+        POST_EXCLUDE_REGEXES ".*[Ss]ystem32/.*\\.dll"
+    )
+
     find_program(WINDEPLOYQT_EXECUTABLE
         NAMES windeployqt windeployqt6
         HINTS "${Qt6_DIR}/../../../bin"
@@ -108,19 +149,29 @@ if (WIN32)
     endif()
 
     add_custom_target(package_windows
+        COMMAND ${CMAKE_COMMAND} -E rm -rf "${WINDOWS_PACKAGE_DIR}"
         COMMAND ${CMAKE_COMMAND} -E make_directory "${WINDOWS_PACKAGE_DIR}"
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different
-            "$<TARGET_FILE:ScriptExecutorApp>" "${WINDOWS_PACKAGE_DIR}"
+        COMMAND ${CMAKE_COMMAND} --install "${CMAKE_BINARY_DIR}"
+            --config "$<CONFIG>"
+            --prefix "${WINDOWS_PACKAGE_DIR}"
         COMMAND "${WINDEPLOYQT_EXECUTABLE}"
             --release
             --compiler-runtime
             --qmldir "${CMAKE_CURRENT_SOURCE_DIR}"
             --dir "${WINDOWS_PACKAGE_DIR}"
-            "$<TARGET_FILE:ScriptExecutorApp>"
+            "${WINDOWS_PACKAGE_DIR}/$<TARGET_FILE_NAME:ScriptExecutorApp>"
         ${WINDOWS_PACKAGE_RUNTIME_COMMANDS}
         COMMENT "Deploying Qt and QML runtime files for Windows"
         DEPENDS ScriptExecutorApp
         VERBATIM
+    )
+
+    add_custom_target(package DEPENDS package_windows)
+else()
+    install(TARGETS ScriptExecutorApp
+        BUNDLE DESTINATION .
+        LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
     )
 endif()
 
