@@ -1,8 +1,24 @@
 {
   "cmake.useCMakePresets": "always",
   "cmake.configureOnOpen": true,
-  "cmake.cmakePath": "C:\\msys64\\mingw64\\bin\\cmake.exe",
-  "cmake.configurePreset": "windows-mingw64",
-  "cmake.buildPreset": "windows-mingw64",
-  "C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools"
+  "C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools",
+  "[windows]": {
+    "cmake.cmakePath": "C:\\msys64\\mingw64\\bin\\cmake.exe",
+    "cmake.environment": {
+      "MINGW_ROOT": "C:/msys64/mingw64",
+      "PATH": "C:/msys64/mingw64/bin;C:/msys64/usr/bin;${env:PATH}"
+    },
+    "cmake.configureSettings": {
+      "CMAKE_CXX_COMPILER": "C:/msys64/mingw64/bin/g++.exe",
+      "CMAKE_MAKE_PROGRAM": "C:/msys64/mingw64/bin/ninja.exe",
+      "CMAKE_PREFIX_PATH": "C:/msys64/mingw64",
+      "PKG_CONFIG_EXECUTABLE": "C:/msys64/mingw64/bin/pkg-config.exe"
+    },
+    "cmake.configurePreset": "windows-mingw64",
+    "cmake.buildPreset": "windows-mingw64"
+  },
+  "[linux]": {
+    "cmake.configurePreset": "linux-dev",
+    "cmake.buildPreset": "linux-dev"
+  }
 }

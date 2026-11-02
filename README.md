@@ -79,36 +79,52 @@ Required Qt modules:
 
 ### Linux development build
 
-Install the Qt 6, libssh development, pkg-config, and C++ build-tool packages
-for your distribution, then run:
+Install Qt 6, libssh development files, pkg-config, and the C++ build tools
+for your distribution. Then configure and build with:
 
 ```bash
 cmake --preset linux-dev
 cmake --build --preset linux-dev --parallel
 ```
 
-### Windows x64 release (MSYS2 MinGW64)
+In VS Code on Linux, select `linux-dev` as the configure and build preset in
+CMake Tools. Use its **Build** button to compile and **Launch** to run
+`ScriptExecutorApp`.
 
-The repository includes a Windows-native preset for MSYS2 MinGW64. It builds
-with GCC/Ninja and uses the Qt and libssh packages installed in the matching
-MSYS2 environment. Visual Studio is not required. The preset defaults to
-`C:\msys64\mingw64`; if MSYS2 is installed elsewhere, update `MINGW_ROOT` in
-`CMakePresets.json`.
+### Windows x64 build (MSYS2 MinGW64)
+
+The project uses one supported Windows toolchain: MSYS2 MinGW64 with GCC and
+Ninja. Qt and libssh must both come from that same MinGW64 environment; do not
+mix them with MSVC packages. Visual Studio is not required.
 
 Install the MINGW64 packages for GCC, CMake, Ninja, pkgconf, libssh, and the
 Qt 6 modules used by the app (Core, Gui, Qml, Quick, and Quick Controls 2).
-Then, on Windows, configure the project and build/run it using the
-`windows-mingw64` configure preset in VS Code's CMake Tools extension. To
-build from a terminal:
+The Windows preset uses the standard `C:\msys64\mingw64` installation path.
+For a standard installation, configure and build with:
 
 ```powershell
 cmake --preset windows-mingw64
 cmake --build --preset windows-mingw64
 ```
 
-In VS Code, select `windows-mingw64` as the configure preset. CMake Tools can
-then build and launch `ScriptExecutorApp.exe` using its normal Build and Launch
-Target commands. The packaged app is built with:
+If MSYS2 is installed elsewhere, update the four toolchain paths in the
+`windows-mingw64` preset in `CMakePresets.json` and `MINGW_ROOT`/`PATH` in
+`.vscode/settings.json`.
+
+### Build and run with VS Code
+
+Install the **CMake Tools** extension (`ms-vscode.cmake-tools`) and open the
+repository folder in VS Code. The workspace selects `windows-mingw64` on
+Windows and `linux-dev` on Linux. On Windows, it configures the standard MSYS2
+location (`C:\msys64\mingw64`) and adds its MinGW/MSYS2 tools to `PATH`. If
+MSYS2 is installed elsewhere, update the paths in `.vscode/settings.json` and
+`CMakePresets.json`. CMake Tools configures the project when the folder opens; use the
+**Build** button in the status bar to compile, then select
+`ScriptExecutorApp` as the launch target and click **Launch** (play button) to
+run it. The same actions are available from the Command Palette as **CMake:
+Build** and **CMake: Launch Target**.
+
+To package the app with its Qt/QML plugins and runtime dependencies, run:
 
 ```powershell
 cmake --build --preset windows-mingw64-package
@@ -118,45 +134,8 @@ The package target deploys Qt/QML plugins and runtime DLL dependencies into
 `build\windows-mingw64\windows-package\`. Distribute the whole folder (or zip
 it), not just the executable.
 
-### Windows x64 release (Visual Studio/MSVC)
-
-Install Visual Studio 2022 with the **Desktop development with C++** workload,
-CMake 3.21 or newer, Qt 6 for the **MSVC 2022 64-bit** compiler, and vcpkg.
-The Qt compiler must match Visual Studio; MinGW Qt builds are not compatible
-with this preset.
-
-Set the paths in PowerShell, then configure and build:
-
-```powershell
-$env:VCPKG_ROOT = "C:\dev\vcpkg"
-$env:QT_ROOT = "C:\Qt\6.8.3\msvc2022_64"
-cmake --preset windows-release
-cmake --build --preset windows-release
-```
-
-The manifest installs libssh through vcpkg. The `package_windows` target runs
-`windeployqt` and copies the vcpkg runtime DLLs into:
-
-```text
-build\windows-release\windows-package\
-```
-
-That folder contains `ScriptExecutorApp.exe` and its runtime dependencies.
-Distribute the whole folder (or zip it); the `.exe` by itself is not a
-self-contained Windows executable.
-
-The Windows build runs the app locally on Windows while SSH commands still
-execute on the connected remote Linux server.
-
-### Ubuntu/Debian dependency helper
-
-The repository also contains a dependency installer for Ubuntu/Debian:
-
-```bash
-cd scripts
-chmod +x dependencyInstaller.sh
-./dependencyInstaller.sh
-```
+The app runs locally on Windows while SSH commands execute on the connected
+remote Linux server.
 
 ## Contact
 

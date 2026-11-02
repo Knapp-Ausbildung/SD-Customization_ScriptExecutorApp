@@ -6,25 +6,15 @@
       "displayName": "Linux development",
       "generator": "Unix Makefiles",
       "binaryDir": "${sourceDir}/build/linux-dev",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Linux"
+      },
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
         "BUILD_QDS_COMPONENTS": "ON",
         "LINK_INSIGHT": "OFF"
-      }
-    },
-    {
-      "name": "windows-release",
-      "displayName": "Windows x64 release",
-      "generator": "Visual Studio 17 2022",
-      "architecture": "x64",
-      "binaryDir": "${sourceDir}/build/windows-release",
-      "toolchainFile": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
-      "cacheVariables": {
-        "CMAKE_PREFIX_PATH": "$env{QT_ROOT}",
-        "VCPKG_TARGET_TRIPLET": "x64-windows",
-        "BUILD_QDS_COMPONENTS": "ON",
-        "LINK_INSIGHT": "OFF",
-        "FETCHCONTENT_UPDATES_DISCONNECTED": "ON"
       }
     },
     {
@@ -38,15 +28,15 @@
         "rhs": "Windows"
       },
       "environment": {
-        "MINGW_ROOT": "C:/msys64/mingw64",
+        "MINGW_ROOT": "$penv{MINGW_ROOT}",
         "PATH": "$env{MINGW_ROOT}/bin;$penv{PATH}"
       },
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
-        "CMAKE_CXX_COMPILER": "$env{MINGW_ROOT}/bin/g++.exe",
-        "CMAKE_MAKE_PROGRAM": "$env{MINGW_ROOT}/bin/ninja.exe",
-        "CMAKE_PREFIX_PATH": "$env{MINGW_ROOT}",
-        "PKG_CONFIG_EXECUTABLE": "$env{MINGW_ROOT}/bin/pkg-config.exe",
+        "CMAKE_CXX_COMPILER": "C:/msys64/mingw64/bin/g++.exe",
+        "CMAKE_MAKE_PROGRAM": "C:/msys64/mingw64/bin/ninja.exe",
+        "CMAKE_PREFIX_PATH": "C:/msys64/mingw64",
+        "PKG_CONFIG_EXECUTABLE": "C:/msys64/mingw64/bin/pkg-config.exe",
         "BUILD_QDS_COMPONENTS": "ON",
         "LINK_INSIGHT": "OFF",
         "FETCHCONTENT_UPDATES_DISCONNECTED": "ON"
@@ -57,14 +47,6 @@
     {
       "name": "linux-dev",
       "configurePreset": "linux-dev"
-    },
-    {
-      "name": "windows-release",
-      "configurePreset": "windows-release",
-      "configuration": "Release",
-      "targets": [
-        "package_windows"
-      ]
     },
     {
       "name": "windows-mingw64",

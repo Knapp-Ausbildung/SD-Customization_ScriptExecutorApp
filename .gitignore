@@ -3,3 +3,4 @@
 /build-clean
 /.vscode
 /logs/
+CMakeUserPresets.json
