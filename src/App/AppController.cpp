@@ -303,6 +303,7 @@ if (m_creatingOracleBackupUser) {
     return;
   }
     if(!m_loadingRemoteBranches) {
+      m_statusCommandPending = false;
       const bool repositoryDownloaded =
           m_refreshInstalledRepositoryAfterCommand &&
           standardOutput.contains(QStringLiteral("__REPOSITORY_INSTALL_SUCCEEDED__"));
@@ -392,6 +393,7 @@ if (m_creatingOracleBackupUser) {
       return;
     }
 
+    m_statusCommandPending = false;
     emit commandFailed(message);
   });
 
@@ -425,6 +427,7 @@ if (m_creatingOracleBackupUser) {
       return;
     }
 
+    m_statusCommandPending = false;
     emit commandCancelled();
   });
 
@@ -526,6 +529,7 @@ void AppController::executePresetCommand(const QString &commandId) {
     emit commandFailed(QStringLiteral("Diese Aktion ist nur mit aktivem KiSoft-One Repository verfügbar"));
     return;
   }
+  m_statusCommandPending = commandId == QStringLiteral("status");
   m_loginService->executePresetCommand(commandId);
 }
 
