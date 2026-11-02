@@ -1,6 +1,7 @@
 {
   "cmake.useCMakePresets": "always",
   "cmake.configureOnOpen": true,
+<<<<<<< Updated upstream
   "C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools",
   "[windows]": {
     "cmake.cmakePath": "C:\\msys64\\mingw64\\bin\\cmake.exe",
@@ -21,4 +22,10 @@
     "cmake.configurePreset": "linux-dev",
     "cmake.buildPreset": "linux-dev"
   }
+=======
+  "cmake.cmakePath": "${workspaceFolder}/scripts/cmake-dispatch.sh",
+  "cmake.configurePreset": "windows-mingw64-wsl",
+  "cmake.buildPreset": "windows-mingw64-wsl",
+  "C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools"
+>>>>>>> Stashed changes
 }

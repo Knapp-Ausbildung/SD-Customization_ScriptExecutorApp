@@ -107,6 +107,7 @@ cmake --preset windows-mingw64
 cmake --build --preset windows-mingw64
 ```
 
+<<<<<<< Updated upstream
 If MSYS2 is installed elsewhere, update the four toolchain paths in the
 `windows-mingw64` preset in `CMakePresets.json` and `MINGW_ROOT`/`PATH` in
 `.vscode/settings.json`.
@@ -125,6 +126,22 @@ run it. The same actions are available from the Command Palette as **CMake:
 Build** and **CMake: Launch Target**.
 
 To package the app with its Qt/QML plugins and runtime dependencies, run:
+=======
+For a WSL workspace that has MSYS2 installed at `C:\msys64\mingw64`, the
+workspace CMake Tools setting uses `scripts/cmake-dispatch.sh`. It selects the
+Linux CMake executable for Linux build directories and MSYS2 CMake for Windows
+presets, so the CMake executable does not need to be changed manually. Select
+`windows-mingw64-wsl` in CMake Tools to build a Windows executable while the
+workspace remains under WSL. Its build directory is on the Windows filesystem
+at `/mnt/c/Users/Public/ScriptExecutorApp-build/windows-mingw64`, where Windows
+Ninja can run its compiler checks and builds. The native Windows preset remains
+`windows-mingw64`. In WSL, package the app with the
+`windows-mingw64-wsl-package` build preset.
+
+In VS Code, select `windows-mingw64` as the configure preset. CMake Tools can
+then build and launch `ScriptExecutorApp.exe` using its normal Build and Launch
+Target commands. The packaged app is built with:
+>>>>>>> Stashed changes
 
 ```powershell
 cmake --build --preset windows-mingw64-package

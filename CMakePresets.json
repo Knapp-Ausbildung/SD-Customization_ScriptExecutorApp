@@ -18,15 +18,34 @@
       }
     },
     {
+<<<<<<< Updated upstream
       "name": "windows-mingw64",
       "displayName": "Windows x64 (MSYS2 MinGW64)",
-      "generator": "Ninja",
-      "binaryDir": "${sourceDir}/build/windows-mingw64",
+=======
+      "name": "windows-release",
+      "displayName": "Windows x64 release",
+      "generator": "Visual Studio 17 2022",
+      "architecture": "x64",
+      "binaryDir": "${sourceDir}/build/windows-release",
+      "toolchainFile": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
       "condition": {
         "type": "equals",
         "lhs": "${hostSystemName}",
         "rhs": "Windows"
       },
+      "cacheVariables": {
+        "CMAKE_PREFIX_PATH": "$env{QT_ROOT}",
+        "VCPKG_TARGET_TRIPLET": "x64-windows",
+        "BUILD_QDS_COMPONENTS": "ON",
+        "LINK_INSIGHT": "OFF",
+        "FETCHCONTENT_UPDATES_DISCONNECTED": "ON"
+      }
+    },
+    {
+      "name": "windows-mingw64-base",
+      "hidden": true,
+>>>>>>> Stashed changes
+      "generator": "Ninja",
       "environment": {
         "MINGW_ROOT": "$penv{MINGW_ROOT}",
         "PATH": "$env{MINGW_ROOT}/bin;$penv{PATH}"
@@ -41,6 +60,28 @@
         "LINK_INSIGHT": "OFF",
         "FETCHCONTENT_UPDATES_DISCONNECTED": "ON"
       }
+    },
+    {
+      "name": "windows-mingw64",
+      "displayName": "Windows x64 (MSYS2 MinGW64)",
+      "inherits": "windows-mingw64-base",
+      "binaryDir": "${sourceDir}/build/windows-mingw64",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
+      }
+    },
+    {
+      "name": "windows-mingw64-wsl",
+      "displayName": "Windows x64 (MSYS2 MinGW64 from WSL)",
+      "inherits": "windows-mingw64-base",
+      "binaryDir": "/mnt/c/Users/Public/ScriptExecutorApp-build/windows-mingw64",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Linux"
+      }
     }
   ],
   "buildPresets": [
@@ -49,13 +90,52 @@
       "configurePreset": "linux-dev"
     },
     {
+<<<<<<< Updated upstream
+=======
+      "name": "windows-release",
+      "configurePreset": "windows-release",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
+      },
+      "configuration": "Release",
+      "targets": [
+        "package_windows"
+      ]
+    },
+    {
+>>>>>>> Stashed changes
       "name": "windows-mingw64",
       "configurePreset": "windows-mingw64",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
+      },
+      "configuration": "Release"
+    },
+    {
+      "name": "windows-mingw64-wsl",
+      "configurePreset": "windows-mingw64-wsl",
       "configuration": "Release"
     },
     {
       "name": "windows-mingw64-package",
       "configurePreset": "windows-mingw64",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
+      },
+      "configuration": "Release",
+      "targets": [
+        "package_windows"
+      ]
+    },
+    {
+      "name": "windows-mingw64-wsl-package",
+      "configurePreset": "windows-mingw64-wsl",
       "configuration": "Release",
       "targets": [
         "package_windows"
