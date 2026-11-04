@@ -755,7 +755,7 @@ void SshWorker::executeCommandInternal(const QString &command,
                           QString::fromUtf8(stderrData),
                           exitStatus);
 }
-
+// Put here your simple linux commands to be executed
 void SshWorker::executePresetCommand(const QString &commandId)
 {
     if (commandId == "reinstallAll") {
@@ -765,7 +765,7 @@ void SshWorker::executePresetCommand(const QString &commandId)
 
     QString command;
     
-    // Set before the commands to true if you need a Pseudo-Terminal
+    // Set before the commands to true if you need a Pseudo-Terminal for example if you need sudo commands
     bool requestPty = false;
 
     if (commandId == "status") {
@@ -791,8 +791,8 @@ void SshWorker::executePresetCommand(const QString &commandId)
         const QString installScript =
             QStringLiteral("set -e\n"
                            "/kisoft/build/KiSoft-One/wcs/scripts/setupBuildTarget.sh\n"
-            "export KX_SRC_ROOT=\"${KX_SRC_ROOT:-${WCS_ROOT%/wcs}}\"\n"
-            ": \"${KX_SRC_ROOT:?KX_SRC_ROOT/WCS_ROOT is not set}\"\n"
+                           "export KX_SRC_ROOT=\"${KX_SRC_ROOT:-${WCS_ROOT%/wcs}}\"\n"
+                           ": \"${KX_SRC_ROOT:?KX_SRC_ROOT/WCS_ROOT is not set}\"\n"
                            ": \"${KLASSX_DB_CONNECT:?KLASSX_DB_CONNECT is not set; cannot determine installation state}\"\n"
                            "export KLASSX_HOME=\"$KX_SRC_ROOT\"\n"
                            "cd \"$KX_SRC_ROOT/test/tool\"\n"
@@ -816,6 +816,17 @@ void SshWorker::executePresetCommand(const QString &commandId)
         requestPty = true;
         command = "bash -lc 'cd \"$WCS_ROOT/\" && make release && "
                   "cd \"$WCS_ROOT/lager\" && updateParameterTables -b core_backup/'";
+
+    } else if (commandId == "reinstallNavigator") {
+      requestPty = true;
+      command = "bash -lc 'cd \"$KX_SRC_ROOT/afgui\" && "
+                 "/usr/bin/xmkmf && "
+                 "make release &&"
+                 "sudo systemctl restart keycloak-container.service &&"
+                 "sudo systemctl restart container-kigateway.service &&" 
+                 "sudo systemctl start nginx-kisoft-one.service &&"
+                 "sudo systemctl restart nginx-kisoft-one.service &&"
+                 "sudo systemctl start tomcat9.service'";
     }
     
     else {

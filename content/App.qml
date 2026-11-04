@@ -1241,9 +1241,9 @@ ApplicationWindow {
                             ActionCard {
                                 Layout.fillWidth: true
                                 Layout.fillHeight: true
-                                title: "Installation"
+                                title: "Re-/Installation"
                                 iconText: "◇"
-                                description: "Installiere oder repariere Komponenten."
+                                description: "Installiere oder reinstalliere Komponenten."
 
                                 ColumnLayout {
                                     Layout.fillWidth: true
@@ -1259,8 +1259,8 @@ ApplicationWindow {
                                             Layout.fillWidth: true
                                             Layout.fillHeight: true
                                             text: dashboardRoot.repositoryInstallPending
-                                                  ? "Install Repository"
-                                                  : "Install / Reinstall Repository"
+                                                  ? "Repository"
+                                                  : "Repository"
                                             iconText: "▶"
                                             Accessible.name: text
                                             running: dashboardRoot.activeCommandButton === "installRepository" ||
@@ -1291,7 +1291,7 @@ ApplicationWindow {
                                             Layout.minimumWidth: 0
                                             Layout.preferredWidth: 1
                                             Layout.margins: 0
-                                            text: "Reinstall Database"
+                                            text: "Database"
                                             iconText: "▤"
                                             Accessible.name: text
                                             running: dashboardRoot.activeCommandButton === "reinstallDb"
@@ -1312,7 +1312,27 @@ ApplicationWindow {
                                             Layout.minimumWidth: 0
                                             Layout.preferredWidth: 1
                                             Layout.margins: 0
-                                            text: "Reinstall KiSoft"
+                                            text: "Navigator"
+                                            iconText: "✦"
+                                            Accessible.name: text
+                                            running: dashboardRoot.activeCommandButton === "reinstallNavigator"
+                                            enabled: !dashboardRoot.commandRunning &&
+                                                     dashboardRoot.kiSoftOneActive &&
+                                                     !dashboardRoot.repositoryInstallPending
+                                            clickHandler: function() {
+                                                dashboardRoot.runPresetWithSudoPassword(
+                                                              "reinstallNavigator",
+                                                              "Navigator wird reinstalliert ...",
+                                                              "reinstallNavigator")
+                                            }
+                                        }
+                                        AnimatedCommandButton {
+                                            Layout.fillWidth: true
+                                            Layout.fillHeight: true
+                                            Layout.minimumWidth: 0
+                                            Layout.preferredWidth: 1
+                                            Layout.margins: 0
+                                            text: "KiSoft"
                                             iconText: "◇"
                                             Accessible.name: text
                                             running: dashboardRoot.activeCommandButton === "reinstallKiSoft"

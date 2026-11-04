@@ -1,6 +1,6 @@
 /build
 /.cache
 /build-clean
-/.vscode
+/.vscode/
 /logs/
 CMakeUserPresets.json
