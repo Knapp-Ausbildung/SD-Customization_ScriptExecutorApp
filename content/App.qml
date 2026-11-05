@@ -1777,7 +1777,8 @@ ApplicationWindow {
                     const reinstallCommand = dashboardRoot.activeCommandButton === "reinstallAll" ||
                                              dashboardRoot.activeCommandButton === "reinstallKiSoft" ||
                                              dashboardRoot.activeCommandButton === "reinstallDb" ||
-                                             dashboardRoot.activeCommandButton === "installRepository"
+                                             dashboardRoot.activeCommandButton === "installRepository" ||
+                                             dashboardRoot.activeCommandButton === "reinstallNavigator"
                     const askForUsername = lowerPrompt.includes("please provide your git remote username") ||
                                            lowerPrompt.includes("username for 'https://");
 
