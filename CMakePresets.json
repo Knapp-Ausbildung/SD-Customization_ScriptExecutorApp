@@ -42,7 +42,7 @@
       "hidden": true,
       "generator": "Ninja",
       "environment": {
-        "MINGW_ROOT": "C:/msys64/mingw64",
+        "MINGW_ROOT": "$penv{MINGW_ROOT}",
         "PATH": "$env{MINGW_ROOT}/bin;$penv{PATH}"
       },
       "cacheVariables": {
@@ -65,6 +65,17 @@
         "type": "equals",
         "lhs": "${hostSystemName}",
         "rhs": "Windows"
+      }
+    },
+    {
+      "name": "windows-mingw64-wsl",
+      "displayName": "Windows x64 (MSYS2 MinGW64 from WSL)",
+      "inherits": "windows-mingw64-base",
+      "binaryDir": "/mnt/c/Users/Public/ScriptExecutorApp-build/windows-mingw64",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Linux"
       }
     }
   ],
@@ -97,6 +108,11 @@
       "configuration": "Release"
     },
     {
+      "name": "windows-mingw64-wsl",
+      "configurePreset": "windows-mingw64-wsl",
+      "configuration": "Release"
+    },
+    {
       "name": "windows-mingw64-package",
       "configurePreset": "windows-mingw64",
       "condition": {
@@ -104,6 +120,14 @@
         "lhs": "${hostSystemName}",
         "rhs": "Windows"
       },
+      "configuration": "Release",
+      "targets": [
+        "package_windows"
+      ]
+    },
+    {
+      "name": "windows-mingw64-wsl-package",
+      "configurePreset": "windows-mingw64-wsl",
       "configuration": "Release",
       "targets": [
         "package_windows"

@@ -790,6 +790,7 @@ void SshWorker::executePresetCommand(const QString &commandId)
         requestPty = true;
         const QString installScript =
             QStringLiteral("set -e\n"
+                            // Execute KXrelease for installing Kisoft-One, WCS, WMW, Gateway 
                            "/kisoft/build/KiSoft-One/wcs/scripts/setupBuildTarget.sh\n"
                            "export KX_SRC_ROOT=\"${KX_SRC_ROOT:-${WCS_ROOT%/wcs}}\"\n"
                            ": \"${KX_SRC_ROOT:?KX_SRC_ROOT/WCS_ROOT is not set}\"\n"
@@ -803,7 +804,19 @@ void SshWorker::executePresetCommand(const QString &commandId)
                            "else\n"
                            "  echo 'No WMW database detected; running first installation.'\n"
                            "  ./KXrelease.sh\n"
-                           "fi");
+                           "fi"
+                           // Installing Navigator
+                          "cd \"$KX_SRC_ROOT/afgui\" && "
+                          "/usr/bin/xmkmf && "
+                          "make release &&"
+                          "sudo systemctl restart keycloak-container.service &&"
+                          "sudo systemctl restart container-kigateway.service &&" 
+                          "sudo systemctl start nginx-kisoft-one.service &&"
+                          "sudo systemctl restart nginx-kisoft-one.service &&"
+                          "sudo systemctl start tomcat9.service"
+                          // Setting up the correct hosts for the stations in /etc/hosts
+                          );
+
         command = "sudo -v && bash -lc " + quoteShellArgument(installScript);
 
     } else if (commandId == "reinstallDb") {
@@ -827,8 +840,120 @@ void SshWorker::executePresetCommand(const QString &commandId)
                  "sudo systemctl start nginx-kisoft-one.service &&"
                  "sudo systemctl restart nginx-kisoft-one.service &&"
                  "sudo systemctl start tomcat9.service'";
+
+    } else if (commandId == "reinstallDummyStations") {
+      requestPty = true;
+      const QString traceOnLevelScript = QStringLiteral("RED=$'\\e[1;31m'\n"
+                                                        "YELLOW=$'\\e[33m'\n"
+                                                        "MAGENTA=$'\\e[35m'\n"
+                                                        "CYAN=$'\\e[36m'\n"
+                                                        "RESET=$'\\e[0m'\n"
+
+                                                        "function traceOnLevel()\n"
+                                                        "{\n"
+                                                          "local level=$1\n"
+                                                          "local caller=$2\n"
+                                                          "local fmt=$3\n"
+                                                          "local console=$4\n"
+                                                          "local timestamp=\"$(date +'%d/%H:%M:%S.%6N')\"\n"
+                                                          "local colorcode\n"
+                                                          "\n"
+                                                          "if [[ -z $level || -z $fmt ]]; then\n"
+                                                          "  level=\"ERR\"\n"
+                                                          "  caller=${FUNCNAME[0]}\n"
+                                                          "  msg=$*\n"
+                                                          "  fmt=\"I was called with wrong number of elements <$msg>\"\n"
+                                                          "  console=true\n"
+                                                          "fi\n"
+                                                          "\n"
+                                                          "if [ $level == 'DBG' ]; then\n"
+                                                          "colorcode=\"${CYAN}\"\n"
+                                                          "elif [ $level == 'INF' ]; then\n"
+                                                          "colorcode=\"${RESET}\"\n"
+                                                          "elif [ $level == 'NTC' ]; then\n"
+                                                          "colorcode=\"${YELLOW}\"\n"
+                                                          "elif [ $level == 'WRN' ]; then\n"
+                                                          "colorcode=\"${MAGENTA}\"\n"
+                                                          "else # ERR\n"
+                                                          "colorcode=\"${RED}\"\n"
+                                                          "fi\n"
+                                                          "\n"
+                                                          "if [[ -n $console && $console != \"false\" && $console != \"stdout\" ]]; then\n"
+                                                          "  printf \"\t${colorcode}%-3.3s %s || ${RESET}%-90s || ${YELLOW}[%s]${RESET}\n\" $level \"$timestamp\" \"$fmt\" \"$caller\"\n"
+                                                          "elif [[ $console == \"stdout\" ]]; then\n"
+                                                          "  printf \"\t${colorcode}%-3.3s %s || ${RESET}%-90s || ${YELLOW}[%s]${RESET}\n\" $level \"$timestamp\" \"$fmt\" \"$caller\"\n"
+                                                          "else\n"
+                                                          "  printf \"\t${colorcode}%-3.3s %s || ${RESET}%-90s || ${YELLOW}[%s]${RESET}\n\" $level \"$timestamp\" \"$fmt\" \"$caller\"\n"
+                                                          "fi\n"
+                                                          "}\n"
+
+                                                          "# Makro Functions for traceOnLevel\n"
+                                                          "function traceDebug() { traceOnLevel DBG \"${FUNCNAME[1]}\" \"$@\"\n"
+                                                          "}\n"
+                                                          "function traceInfo() { traceOnLevel INF \"${FUNCNAME[1]}\" \"$@\"\n"
+                                                          "}\n"
+                                                          "function traceNotice() { traceOnLevel NTC \"${FUNCNAME[1]}\" \"$@\"\n"
+                                                          "}\n"
+                                                          "function traceWarning() { traceOnLevel WRN \"${FUNCNAME[1]}\" \"$@\"\n"
+                                                          "}\n"
+                                                          "function traceError() { traceOnLevel ERR \"${FUNCNAME[1]}\" \"$@\"\n"
+                                                          "}\n");
+
+      const QString dummyHostScript = QStringLiteral(// "export KLASSX_HOME=\"$KX_SRC_ROOT\"\n"
+                                                     "_confuse_config=\"/kisoft/build/KiSoft-One/wcs/lager/backup/klassx/station_parameter.xml\"\n"
+                                                     "ip2nd=\"20\"\n"
+                                                     "ip3rd=\"20\"\n"
+                                                     "ip4th=\"1\"\n"
+                                                     "_ip_base=\"127\"\n"
+                                                     ""
+                                                     "if [ -e \"$_confuse_config\" ]; then\n"
+                                                     "  traceDebug \"  * Add missing stations to /etc/hosts\" false\n"
+                                                     "  for c in $(fgrep -wF tcp_host \"$_confuse_config\" | awk '{print $2}' | sed -e 's/value=\"//g' | sed -e 's/[\" ].*//g' | sed -e /^$/d | grep -v localhost)\n"
+                                                     "  do \n"
+                                                     "    alreadyDone=$(fgrep -wF \"$c\" /etc/hosts)\n"
+                                                     "    if [[ -n $alreadyDone ]]; then\n"
+                                                     "        traceDebug \"  * Found <$c> in /etc/hosts, nothing to do\" false\n"
+                                                     "    else\n"
+                                                     "        traceDebug \"  * Did not find <$c> in /etc/hosts, get free IP\" false\n"
+                                                     "        alreadyUsed=$(fgrep -wF \"${_ip_base}.${ip2nd}.${ip3rd}.${ip4th}\" /etc/hosts)\n"
+                                                     "        while [[ -n $alreadyUsed ]]; do\n"
+                                                     "          traceWarning \"${_ip_base}.${ip2nd}.${ip3rd}.${ip4th} already used for <$alreadyUsed>, try next IP\"\n"
+                                                     "          if [ ${ip4th} -le 254  ]; then\n"
+                                                     "            ip4th=$(( ${ip4th} + 1 ));\n"
+                                                     "          else\n"
+                                                     "            ip4th=\"1\";\n"
+                                                     "            if [ ${ip3rd} -le 254 ]; then\n"
+                                                     "              ip3rd=$(( ${ip3rd} + 1 ));\n"
+                                                     "            else\n"
+                                                     "              ip3rd=\"1\";\n"
+                                                     "              if [ ${ip2nd} -le 254 ]; then\n"
+                                                     "                ip2nd=$(( ${ip2nd} + 1 ));\n"
+                                                     "              else\n"
+                                                     "                traceError \"  * IP-Range full! Can't create more IPs!\" true\n"
+                                                     "                exit 1;\n"
+                                                     "              fi;\n"
+                                                     "            fi;\n"
+                                                     "          fi;\n"
+                                                     "          alreadyUsed=$(fgrep -wF \"${_ip_base}.${ip2nd}.${ip3rd}.${ip4th}\" /etc/hosts);\n"
+                                                     "        done;\n"
+                                                     ""
+                                                     "        traceDebug \"  * Adding IP ${_ip_base}.${ip2nd}.${ip3rd}.${ip4th} $c to hosts\" false\n"
+                                                     "        echo \"${_ip_base}.${ip2nd}.${ip3rd}.${ip4th} $c\" | sudo tee -a /etc/hosts > /dev/null\n"
+                                                     "        if [ $? -ne 0 ]; then\n"
+                                                     "          traceError \"  * Could not add ${_ip_base}.${ip2nd}.${ip3rd}.${ip4th} $c to /etc/hosts!\" true\n"
+                                                     "        fi\n"
+                                                     "    fi\n"
+                                                     "  done\n"
+                                                     "  traceInfo \"  * Add missing stations to /etc/hosts Done\" true;\n"
+                                                     "else\n"
+                                                     "  traceError \"  * No File <$_confuse_config> found!\" true;\n"
+                                                     "  exit 1;\n"
+                                                     "fi\n");
+
+    command = traceOnLevelScript + dummyHostScript;
+
     }
-    
+
     else {
 
         emit commandFailed("Unkown predefined command");

@@ -1351,12 +1351,43 @@ ApplicationWindow {
                                 }
                             }
 
+                                
                             ActionCard {
                                 Layout.fillWidth: true
                                 Layout.fillHeight: true
                                 title: "Service Steuerung"
                                 iconText: "⚙"
                                 description: "Steuere und überwache laufende Dienste."
+
+                                ColumnLayout {
+                                    Layout.fillWidth: true
+                                    Layout.fillHeight: true
+                                    spacing: -3
+
+                                RowLayout {
+                                    Layout.fillWidth: true
+                                    Layout.fillHeight: true
+                                    Layout.margins: 0
+
+                                    AnimatedCommandButton {
+                                        Layout.fillWidth: true
+                                        Layout.fillHeight: true
+                                        text: "Refresh Dummy-Station-Hosts"
+                                        iconText: "+"
+                                        Accessible.name: text
+                                        running: dashboardRoot.activeCommandButton === "reinstallDummyStations"
+                                        enabled: !dashboardRoot.commandRunning &&
+                                                 dashboardRoot.kiSoftOneActive
+                                        clickHandler: function() {
+                                            dashboardRoot.runPreset("reinstallDummyStations", "Dummy-Stations werden installiert ...", "reinstallDummyStations")
+                                        }
+                                    }
+                                }
+
+                                RowLayout {
+                                        Layout.fillWidth: true
+                                        Layout.fillHeight: true
+                                        Layout.margins: 0
 
                                 GridLayout {
                                     Layout.fillWidth: true
@@ -1408,9 +1439,10 @@ ApplicationWindow {
                                     }
                                 }
                             }
-
                         }
                     }
+                }
+            }
 
                     Rectangle {
                         Layout.fillWidth: true
@@ -1780,8 +1812,8 @@ ApplicationWindow {
                         appController.submitCommandInput("y");
                         return;
                     }
-
-                    if ((oracleCommand || reinstallCommand) && lowerPrompt.includes("password")) {
+                    // Caching Password for following klassx password requirements
+                    if ((oracleCommand || reinstallCommand || dashboardRoot.activeCommandButton === "setupRepository") && lowerPrompt.includes("password")) {
                         const isSudoPrompt = lowerPrompt.includes("sudo") &&
                                              lowerPrompt.includes("for klassx")
                         const password = isSudoPrompt
