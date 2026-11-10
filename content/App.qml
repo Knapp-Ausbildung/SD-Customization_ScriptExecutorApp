@@ -783,6 +783,11 @@ ApplicationWindow {
                 oracleBackupPasswordField.clear()
             }
 
+            function clearGitCredentialsCache() {
+                gitUsernameCache = ""
+                gitPatCache = ""
+            }
+
             ColumnLayout {
                 anchors.fill: parent
                 anchors.margins: 0
@@ -1750,6 +1755,7 @@ ApplicationWindow {
 
                     dashboardRoot.activeCommandButton= ""
                     dashboardRoot.clearOraclePasswordCache()
+                    dashboardRoot.clearGitCredentialsCache()
                 }
 
                 function onCommandFailed(message) {
@@ -1759,6 +1765,7 @@ ApplicationWindow {
                     dashboardRoot.commandRunning = false
                     dashboardRoot.activeCommandButton= ""
                     dashboardRoot.clearOraclePasswordCache()
+                    dashboardRoot.clearGitCredentialsCache()
                 }
 
                 function onCommandCancelled() {
@@ -1768,6 +1775,7 @@ ApplicationWindow {
                     dashboardRoot.commandRunning = false
                     dashboardRoot.activeCommandButton= ""
                     dashboardRoot.clearOraclePasswordCache()
+                    dashboardRoot.clearGitCredentialsCache()
                 }
 
                 function onCommandInputRequested(prompt, secret) {
@@ -2058,8 +2066,7 @@ ApplicationWindow {
             onRejected: {
                 gitUsernameField.clear()
                 gitPatField.clear()
-                dashboardRoot.gitUsernameCache = ""
-                dashboardRoot.gitPatCache = ""
+                dashboardRoot.clearGitCredentialsCache()
                 appController.cancelCommand()
             }
         }
