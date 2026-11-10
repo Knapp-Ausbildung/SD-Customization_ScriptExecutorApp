@@ -2,6 +2,9 @@
 #include <QCoreApplication>
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
+#include <QDir>
+#include <QStandardPaths>
+#include <QDebug>
 
 #include "App/AppController.hpp"
 
@@ -21,6 +24,23 @@ int main(int argc, char *argv[]) {
   // Engine für QML
   QQmlApplicationEngine engine;
 
+  const QString configBase = QStandardPaths::writableLocation(QStandardPaths::GenericConfigLocation);
+
+  if (configBase.isEmpty()) {
+    qCritical() << "Kein Kofnigurationsverzeichnis verfügbar!";
+    return 1;
+  }
+
+  const QString configDir = QDir(configBase).filePath("ScriptExecutorApp");
+
+  if (!QDir().mkpath(configDir)) {
+    qCritical() << "Konfigurationsverzeichnis konnte nicht erstellt werden: " << configDir;
+    return 1;
+  }
+
+  const QString settingsFile = QDir(configDir).filePath("settings.ini");
+
+  engine.rootContext()->setContextProperty("settingsFile", settingsFile);
   // Controller-Objekt erzeugen
   AppController appController;
 

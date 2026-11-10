@@ -2,6 +2,7 @@ import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Controls.Material 2.15
 import QtQuick.Layouts 1.15
+import Qt.labs.settings 1.0
 
 ApplicationWindow {
 
@@ -22,6 +23,16 @@ ApplicationWindow {
     palette.highlight: "#0d5a70"
     palette.highlightedText: "#ffffff"
 
+    Settings {
+        id: loginSettings
+
+        fileName: settingsFile
+        category: "Login"
+
+        property string lastIp: ""
+        property string lastUsername: ""
+        property string favoritesJson: "[]"
+    }
     component FlatButton: Button {
         id: flatButton
 
@@ -317,8 +328,151 @@ ApplicationWindow {
             id: loginRoot
             color: "#0b1520"
 
+            property bool favoritesValid: true
+            property string favoritesError: ""
+            property bool loginPending: false
+            property string pendingIp: ""
+            property string pendingUsername: ""
+            property string pendingFavoriteName: ""
+
+            ListModel {
+                id: favoritesModel
+            }
+
+            Component.onCompleted: {
+                try {
+                    const favorites = JSON.parse(loginSettings.favoritesJson)
+
+                    if (!Array.isArray(favorites))
+                        throw new Error("Favoriten müssen eine Liste sein")
+
+                    for (let i = 0; i < favorites.length; i++) {
+                        const favorite = favorites[i]
+
+                        if (!favorite || typeof favorite.name !== "string"
+                                      || typeof favorite.ip !== "string"
+                                      || typeof favorite.username !== "string") {
+                            throw new Error("Ungültiger Favorit an Position " + i)
+                        }
+
+                        favoritesModel.append({
+                            name: favorite.name,
+                            ip: favorite.ip,
+                            username: favorite.username
+                        })
+                }
+            } catch (error) {
+                favoritesModel.clear()
+                favoritesValid = false
+                favoritesError = "Favoriten konnten nicht geladen werden. "
+                                 + "Bitte settings.ini überprüfen!"
+                console.error("Fehler beim Laden der Favoriten: ", error) 
+            }
+        }
+
+            function saveSuccessfulLogin() {
+                if (!loginPending) {
+                    return
+                }
+
+                loginSettings.lastIp = pendingIp
+                loginSettings.lastUsername = pendingUsername
+
+                if (favoritesValid) {
+                    addFavorite()
+                } else {
+                    console.error("Login erfolgreich, aber Favoriten konnten nicht gespeichert werden", favoritesError)
+                    favoritesSaveWarning.open()
+                }
+
+                loginSettings.sync()
+                loginPending = false
+            }
+
+            function saveFavorites () {
+                const favorites = []
+
+                for (let i = 0; i < favoritesModel.count; i++) {
+                    const favorite = favoritesModel.get(i)
+                    
+                    favorites.push({
+                        name: favorite.name,
+                        ip: favorite.ip,
+                        username: favorite.username
+                    })
+                }
+
+                loginSettings.favoritesJson = JSON.stringify(favorites)
+                loginSettings.sync()
+            }
+
+            function addFavorite() {
+                const ip = pendingIp
+                const username = pendingUsername
+                const name = pendingFavoriteName
+
+                if (ip.length === 0) {
+                    return
+                }
+            
+                for (let i = 0; i < favoritesModel.count; i++) {
+                    if (favoritesModel.get(i).ip === ip) {
+                        favoritesModel.set(i, {
+                            name: name,
+                            ip: ip,
+                            username: username
+                        })
+
+                        saveFavorites()
+                        return
+                    }
+                }
+
+                favoritesModel.append({
+                    name: name,
+                    ip: ip,
+                    username: username
+            })
+            
+            saveFavorites()
+        }
+
+            function removeFavorite(index) {
+                if (!favoritesValid || index < 0 || index >= favoritesModel.count) {
+                    return
+                }
+
+                const selectedIndex = favoritesCombo.currentIndex
+                
+                favoritesModel.remove(index)
+
+                if (selectedIndex === index) {
+                    favoritesCombo.currentIndex = -1
+                } else if (selectedIndex > index) {
+                    favoritesCombo.currentIndex = selectedIndex - 1
+                } else {
+                    favoritesCombo.currentIndex = selectedIndex
+                }
+
+                saveFavorites()
+            }
+
+                
             function performLogin() {
-                appController.attemptLogin(ipAddressField.text, userNameField.text, passwordField.text)
+                if (loginPending) {
+                    return
+                }
+
+                pendingIp = ipAddressField.text.trim()
+                pendingUsername = userNameField.text.trim()
+                pendingFavoriteName = favoriteNameField.text.trim() || pendingIp
+
+                loginPending = true
+                appController.attemptLogin(
+                    pendingIp,
+                    pendingUsername,
+                    passwordField.text
+                )
             }
 
             Rectangle {
@@ -349,9 +503,87 @@ ApplicationWindow {
                         font.pixelSize: 13
                     }
 
+                    ComboBox {
+                        id: favoritesCombo
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 40
+                        model: favoritesModel
+                        enabled: favoritesModel.count > 0
+                        textRole: "name"
+                        currentIndex: -1
+                        displayText: favoritesModel.count === 0 
+                                     ? "Keine Favoriten vorhanden"
+                                     : currentIndex < 0
+                                        ? "Favorit auswählen"
+                                        : currentText
+                        Accessible.name: "Gespeicherte Server"
+                        delegate: ItemDelegate {
+                            width: favoritesCombo.width
+
+                            highlighted: favoritesCombo.highlightedIndex === index
+                            Accessible.name: model.name
+
+                            contentItem: RowLayout {
+                                spacing: 8
+
+                                Label {
+                                    Layout.fillWidth: true
+                                    text: model.name
+                                    elide: Text.ElideRight
+                                    color: "#e3edf5"
+                                }
+
+                                ToolButton {
+                                    text: "x"
+                                    font.pixelSize: 22
+                                    enabled: loginRoot.favoritesValid
+                                    activeFocusOnTab: true
+                                    Accessible.name: model.name + " aus Favoriten entfernen"
+
+                                    contentItem: Text {
+                                        text: parent.text
+                                        font: parent.font
+                                        color: parent.enabled 
+                                               ? "#ef4444"
+                                               : "#82909d"
+                                        horizontalAlignment: Text.AlignHCenter
+                                        verticalAlignment: Text.AlignVCenter
+                                    }
+
+                                    ToolTip.visible: hovered
+                                    ToolTip.text: "Favorit entfernen"
+
+                                    onClicked: loginRoot.removeFavorite(index)
+                                }
+                            }
+                        }
+
+                        onActivated: function(index) {
+                            const favorite = favoritesModel.get(index)
+                            ipAddressField.text = favorite.ip
+                            userNameField.text = favorite.username
+                            favoriteNameField.text = favorite.name
+                        }
+                    }
+
+                    Text {
+                        Layout.fillWidth: true
+                        visible: loginRoot.favoritesError.length > 0
+                        text: loginRoot.favoritesError
+                        color: "#ff8080"
+                    }
+
+                    ThemedTextField {
+                        id: favoriteNameField
+                        Layout.fillWidth: true
+                        placeholderText: "Name für Favorit (optional)"
+                        Accessible.name: placeholderText
+                    }
+
                     ThemedTextField {
                         id: ipAddressField
                         Layout.fillWidth: true
+                        text: loginSettings.lastIp
                         placeholderText: "IP-Adresse"
                         Accessible.name: placeholderText
                         onAccepted: userNameField.forceActiveFocus()
@@ -360,6 +592,7 @@ ApplicationWindow {
                     ThemedTextField {
                         id: userNameField
                         Layout.fillWidth: true
+                        text: loginSettings.lastUsername
                         placeholderText: "Benutzername"
                         Accessible.name: placeholderText
                         onAccepted: passwordField.forceActiveFocus()
@@ -2194,11 +2427,31 @@ ApplicationWindow {
         }
     }
 
+    Dialog {
+        id: favoritesSaveWarning
+        anchors.centerIn: Overlay.overlay
+        modal: true
+        title: "Favoriten nicht gespeichert"
+        standardButtons: Dialog.Ok
+
+        contentItem: ThemedLabel {
+            text: "Der Login war erfolgreich, aber die Favoriten konnten "
+                  + "nicht geladen oder aktualisiert werden. "
+                  + "Bitte überprüfe settings.ini"
+            wrapMode: Text.Wrap
+        }
+    }
+
     Connections {
         target: appController
         function onLoggedInChanged() {
             // Beispiel: wenn sich login-State ändert, UI neu laden
             if (appController.loggedIn) {
+                const page = stack.currentItem
+                if (page && typeof page.saveSuccessfulLogin === "function") {
+                    page.saveSuccessfulLogin()
+                }
+
                 stack.replace(dashboardPage)
             } else {
                 stack.replace(loginPage)
