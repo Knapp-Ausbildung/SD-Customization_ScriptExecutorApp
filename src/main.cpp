@@ -6,7 +6,7 @@
 #include <QStandardPaths>
 #include <QDebug>
 
-#include "App/AppController.hpp"
+#include "App/SessionManager.hpp"
 
 #include "app_environment.h"
 #include "import_qml_components_plugins.h"
@@ -20,6 +20,10 @@ int main(int argc, char *argv[]) {
   QGuiApplication app(argc, argv);
   QCoreApplication::setApplicationVersion(
       QStringLiteral(SCRIPT_EXECUTOR_APP_VERSION));
+
+  // Erstellen einer Session
+  SessionManager sessionManager;
+  sessionManager.addSession();
 
   // Engine für QML
   QQmlApplicationEngine engine;
@@ -41,12 +45,10 @@ int main(int argc, char *argv[]) {
   const QString settingsFile = QDir(configDir).filePath("settings.ini");
 
   engine.rootContext()->setContextProperty("settingsFile", settingsFile);
-  // Controller-Objekt erzeugen
-  AppController appController;
 
   // Wichtig: Das Objekt als Kontextproperty in QML einhängen.
-  // Dadurch kann QML auf appController zugreifen
-  engine.rootContext()->setContextProperty("appController", &appController);
+  // Dadurch kann QML auf sessionManager zugreifen
+  engine.rootContext()->setContextProperty("sessionManager", &sessionManager);
 
   // QML-Datei laden
   const QUrl url(u"qrc:/qt/qml/Main/main.qml"_qs);

@@ -4,24 +4,26 @@ import QtQuick.Controls.Material 2.15
 import QtQuick.Layouts 1.15
 import Qt.labs.settings 1.0
 
-ApplicationWindow {
+Item {
+        id: appRoot
+        property var appController
+        property var favoritesModel
+        property var favoritesSettings
+        property bool favoritesValid: true
+        property string favoritesError: ""
+        property bool hasUnseenCommandResult: false
+        readonly property string serverContextLabel:
+            appController.serverName.length > 0
+                ? appController.serverName
+                : appController.serverAddress.length > 0
+                    ? appController.serverAddress
+                    : "Neue Verbindung"
+        readonly property bool commandRunning: stack.currentItem !== null && stack.currentItem.commandRunning === true
 
-    visible: true
-    width: 1200
-    height: 800
-    minimumWidth: 960
-    minimumHeight: 640
-    Material.theme: Material.Dark
-    Material.accent: "#35c7e4"
-    Material.primary: "#102636"
-    palette.window: "#0b1520"
-    palette.windowText: "#e3edf5"
-    palette.base: "#08121b"
-    palette.text: "#e3edf5"
-    palette.button: "#15394d"
-    palette.buttonText: "#e4edf5"
-    palette.highlight: "#0d5a70"
-    palette.highlightedText: "#ffffff"
+        onVisibleChanged: {
+            if (visible)
+                hasUnseenCommandResult = false
+        }
 
     Settings {
         id: loginSettings
@@ -31,7 +33,6 @@ ApplicationWindow {
 
         property string lastIp: ""
         property string lastUsername: ""
-        property string favoritesJson: "[]"
     }
     component FlatButton: Button {
         id: flatButton
@@ -126,9 +127,51 @@ ApplicationWindow {
     }
 
     component ThemedDialog: Dialog {
+        id: themedDialog
+
         implicitWidth: Math.max(implicitContentWidth, 420)
         property Item enterFocusTarget: null
         closePolicy: Popup.CloseOnEscape
+
+        header: Item {
+            implicitHeight: 48
+
+            RowLayout {
+                anchors.fill: parent
+                anchors.leftMargin: 20
+                anchors.rightMargin: 16
+                spacing: 10
+
+                Text {
+                    Layout.fillWidth: true
+                    text: themedDialog.title
+                    color: "#e3edf5"
+                    font.pixelSize: 18
+                    elide: Text.ElideRight
+                    verticalAlignment: Text.AlignVCenter
+                }
+
+                Rectangle {
+                    Layout.preferredWidth: Math.min(serverContextText.implicitWidth + 16, 200)
+                    Layout.preferredHeight: 26
+                    radius: 6
+                    color: "#08121b"
+                    border.color: "#294354"
+
+                    Text {
+                        id: serverContextText
+                        anchors.fill: parent
+                        anchors.leftMargin: 8
+                        anchors.rightMargin: 8
+                        text: "Server: " + appRoot.serverContextLabel
+                        color: "#9bb0c0"
+                        font.pixelSize: 11
+                        elide: Text.ElideRight
+                        verticalAlignment: Text.AlignVCenter
+                    }
+                }
+            }
+        }
 
         onOpened: {
             const cancelButton = standardButton(Dialog.Cancel)
@@ -328,47 +371,41 @@ ApplicationWindow {
             id: loginRoot
             color: "#0b1520"
 
-            property bool favoritesValid: true
-            property string favoritesError: ""
+            property var favoritesModel: appRoot.favoritesModel
+            property bool favoritesValid: appRoot.favoritesValid
+            property string favoritesError: appRoot.favoritesError
             property bool loginPending: false
             property string pendingIp: ""
             property string pendingUsername: ""
             property string pendingFavoriteName: ""
 
-            ListModel {
-                id: favoritesModel
-            }
-
-            Component.onCompleted: {
-                try {
-                    const favorites = JSON.parse(loginSettings.favoritesJson)
-
-                    if (!Array.isArray(favorites))
-                        throw new Error("Favoriten müssen eine Liste sein")
-
-                    for (let i = 0; i < favorites.length; i++) {
-                        const favorite = favorites[i]
-
-                        if (!favorite || typeof favorite.name !== "string"
-                                      || typeof favorite.ip !== "string"
-                                      || typeof favorite.username !== "string") {
-                            throw new Error("Ungültiger Favorit an Position " + i)
-                        }
-
-                        favoritesModel.append({
-                            name: favorite.name,
-                            ip: favorite.ip,
-                            username: favorite.username
-                        })
+            function applyFavorite(index) {
+                if (index < 0 || index >= favoritesModel.count) {
+                    return
                 }
-            } catch (error) {
-                favoritesModel.clear()
-                favoritesValid = false
-                favoritesError = "Favoriten konnten nicht geladen werden. "
-                                 + "Bitte settings.ini überprüfen!"
-                console.error("Fehler beim Laden der Favoriten: ", error) 
+
+                const favorite = favoritesModel.get(index)
+                ipAddressField.text = favorite.ip
+                userNameField.text = favorite.username
+                favoriteNameField.text = favorite.name
             }
-        }
+
+            function restoreLastSelectedFavorite() {
+                const lastSelectedIp = favoritesSettings.lastSelectedFavoriteIp
+                if (lastSelectedIp.length === 0) {
+                    return
+                }
+
+                for (let i = 0; i < favoritesModel.count; i++) {
+                    if (favoritesModel.get(i).ip === lastSelectedIp) {
+                        favoritesCombo.currentIndex = i
+                        applyFavorite(i)
+                        return
+                    }
+                }
+            }
+
+            Component.onCompleted: restoreLastSelectedFavorite()
 
             function saveSuccessfulLogin() {
                 if (!loginPending) {
@@ -402,8 +439,8 @@ ApplicationWindow {
                     })
                 }
 
-                loginSettings.favoritesJson = JSON.stringify(favorites)
-                loginSettings.sync()
+                favoritesSettings.favoritesJson = JSON.stringify(favorites)
+                favoritesSettings.sync()
             }
 
             function addFavorite() {
@@ -419,6 +456,7 @@ ApplicationWindow {
                     if (favoritesModel.get(i).ip === ip) {
                         favoritesModel.set(i, {
                             name: name,
+                            displayName: name.length > 0 ? name : ip,
                             ip: ip,
                             username: username
                         })
@@ -430,9 +468,10 @@ ApplicationWindow {
 
                 favoritesModel.append({
                     name: name,
+                    displayName: name.length > 0 ? name : ip,
                     ip: ip,
                     username: username
-            })
+                })
             
             saveFavorites()
         }
@@ -443,8 +482,14 @@ ApplicationWindow {
                 }
 
                 const selectedIndex = favoritesCombo.currentIndex
+                const removedIp = favoritesModel.get(index).ip
                 
                 favoritesModel.remove(index)
+
+                if (favoritesSettings.lastSelectedFavoriteIp === removedIp) {
+                    favoritesSettings.lastSelectedFavoriteIp = ""
+                    favoritesSettings.sync()
+                }
 
                 if (selectedIndex === index) {
                     favoritesCombo.currentIndex = -1
@@ -465,9 +510,20 @@ ApplicationWindow {
 
                 pendingIp = ipAddressField.text.trim()
                 pendingUsername = userNameField.text.trim()
-                pendingFavoriteName = favoriteNameField.text.trim() || pendingIp
+                pendingFavoriteName = favoriteNameField.text.trim()
+
+                if (pendingFavoriteName.length === 0) {
+                    for (let i = 0; i < favoritesModel.count; i++) {
+                        const favorite = favoritesModel.get(i)
+                        if (favorite.ip === pendingIp) {
+                            pendingFavoriteName = favorite.name
+                            break
+                        }
+                    }
+                }
 
                 loginPending = true
+                appController.setServerName(pendingFavoriteName)
                 appController.attemptLogin(
                     pendingIp,
                     pendingUsername,
@@ -509,36 +565,56 @@ ApplicationWindow {
                         Layout.preferredHeight: 40
                         model: favoritesModel
                         enabled: favoritesModel.count > 0
-                        textRole: "name"
+                        textRole: "displayName"
                         currentIndex: -1
-                        displayText: favoritesModel.count === 0 
-                                     ? "Keine Favoriten vorhanden"
-                                     : currentIndex < 0
-                                        ? "Favorit auswählen"
-                                        : currentText
+                        displayText: currentIndex < 0
+                                     ? "Favorit auswählen"
+                                     : currentText
                         Accessible.name: "Gespeicherte Server"
+
+                        background: Rectangle {
+                            color: "#08121b"
+                            radius: 6
+                            border.color: favoritesCombo.activeFocus
+                                          ? "#35c7e4" : "#294354"
+                        }
+
                         delegate: ItemDelegate {
-                            width: favoritesCombo.width
+                            width: favoritesCombo.width - 8
+                            height: 44
+                            padding: 4
+                            leftPadding: 8
+                            rightPadding: 6
 
                             highlighted: favoritesCombo.highlightedIndex === index
-                            Accessible.name: model.name
+                            Accessible.name: model.displayName
+
+                            background: Rectangle {
+                                radius: 6
+                                color: highlighted ? "#0d5a70"
+                                      : hovered ? "#15394d"
+                                      : "transparent"
+                            }
 
                             contentItem: RowLayout {
                                 spacing: 8
 
                                 Label {
                                     Layout.fillWidth: true
-                                    text: model.name
+                                    text: model.displayName
                                     elide: Text.ElideRight
                                     color: "#e3edf5"
+                                    verticalAlignment: Text.AlignVCenter
                                 }
 
                                 ToolButton {
                                     text: "x"
-                                    font.pixelSize: 22
+                                    Layout.preferredWidth: 32
+                                    Layout.preferredHeight: 32
+                                    font.pixelSize: 18
                                     enabled: loginRoot.favoritesValid
                                     activeFocusOnTab: true
-                                    Accessible.name: model.name + " aus Favoriten entfernen"
+                                    Accessible.name: model.displayName + " aus Favoriten entfernen"
 
                                     contentItem: Text {
                                         text: parent.text
@@ -550,6 +626,13 @@ ApplicationWindow {
                                         verticalAlignment: Text.AlignVCenter
                                     }
 
+                                    background: Rectangle {
+                                        radius: 4
+                                        color: parent.down ? "#7f1d1d"
+                                              : parent.hovered ? "#3b1f2a"
+                                              : "transparent"
+                                    }
+
                                     ToolTip.visible: hovered
                                     ToolTip.text: "Favorit entfernen"
 
@@ -558,11 +641,43 @@ ApplicationWindow {
                             }
                         }
 
+                        popup: Popup {
+                            y: favoritesCombo.height - 1
+                            width: favoritesCombo.width
+                            padding: 4
+                            implicitHeight: Math.min(contentItem.contentHeight, 4 * 44)
+                                            + padding * 2
+
+                            contentItem: ListView {
+                                clip: true
+                                implicitHeight: contentHeight
+                                model: favoritesCombo.popup.visible
+                                       ? favoritesCombo.delegateModel : null
+                                currentIndex: favoritesCombo.highlightedIndex
+
+                                ScrollBar.vertical: ScrollBar {
+                                    policy: ScrollBar.AsNeeded
+
+                                    contentItem: Rectangle {
+                                        implicitWidth: 6
+                                        radius: 3
+                                        color: "#294354"
+                                    }
+                                }
+                            }
+
+                            background: Rectangle {
+                                color: "#101f2c"
+                                radius: 8
+                                border.color: "#294354"
+                            }
+                        }
+
                         onActivated: function(index) {
-                            const favorite = favoritesModel.get(index)
-                            ipAddressField.text = favorite.ip
-                            userNameField.text = favorite.username
-                            favoriteNameField.text = favorite.name
+                            loginRoot.applyFavorite(index)
+                            favoritesSettings.lastSelectedFavoriteIp =
+                                    favoritesModel.get(index).ip
+                            favoritesSettings.sync()
                         }
                     }
 
@@ -647,6 +762,7 @@ ApplicationWindow {
 
             property string oracleSudoPasswordCache: ""
             property string oracleBackupPasswordCache: ""
+            property string setupRepositorySudoPasswordCache: ""
             property string outputHtml: ""
             property string outputPlainText: ""
             property string outputSearchTerm: ""
@@ -984,7 +1100,14 @@ ApplicationWindow {
                 if (commandRunning)
                     return
 
-                clearOraclePasswordCache()
+                const passwordCache = buttonId === "installRepository"
+                                      ? setupRepositorySudoPasswordCache
+                                      : oracleSudoPasswordCache
+                if (passwordCache.length > 0) {
+                    runPreset(commandId, displayCommand, buttonId)
+                    return
+                }
+
                 reinstallSudoCredentialsDialog.commandId = commandId
                 reinstallSudoCredentialsDialog.displayCommand = displayCommand
                 reinstallSudoCredentialsDialog.buttonId = buttonId
@@ -1012,6 +1135,7 @@ ApplicationWindow {
             function clearOraclePasswordCache() {
                 oracleSudoPasswordCache = ""
                 oracleBackupPasswordCache = ""
+                setupRepositorySudoPasswordCache = ""
                 oracleSudoPasswordField.clear()
                 oracleBackupPasswordField.clear()
             }
@@ -1025,60 +1149,6 @@ ApplicationWindow {
                 anchors.fill: parent
                 anchors.margins: 0
                 spacing: 10
-
-                Rectangle {
-                    Layout.fillWidth: true
-                    Layout.preferredHeight: 48
-                    color: "#102636"
-                    radius: 0
-
-                    RowLayout {
-                        anchors.fill: parent
-                        anchors.leftMargin: 18
-                        anchors.rightMargin: 12
-                        spacing: 12
-
-                        ColumnLayout {
-                            spacing: 1
-
-                            Text {
-                                text: "ScriptExecutorApp"
-                                color: "#e8f0f7"
-                                font.pixelSize: 19
-                                font.bold: true
-                            }
-
-                            Text {
-                                text: "Verwalten. Automatisieren. Entlasten."
-                                color: "#9bb0c0"
-                                font.pixelSize: 11
-                            }
-                        }
-
-                        Item {
-                            Layout.fillWidth: true
-                        }
-
-                        Rectangle {
-                            Layout.preferredWidth: 9
-                            Layout.preferredHeight: 9
-                            radius: 5
-                            color: appController.loggedIn ? "#22c55e" : "#ef4444"
-                        }
-
-                        Text {
-                            text: appController.loggedIn ? "Eingeloggt" : "Ausgeloggt"
-                            color: "#d7e2eb"
-                        }
-
-                        FlatButton {
-                            text: "Ausloggen"
-                            Accessible.name: text
-                            enabled: !dashboardRoot.commandRunning
-                            onClicked: appController.attemptLogout()
-                        }
-                    }
-                }
 
                 Rectangle {
                     Layout.fillWidth: true
@@ -1396,12 +1466,36 @@ ApplicationWindow {
                                 Layout.fillHeight: true
                                 title: "Datenbank Aktionen"
                                 iconText: "▤"
-                                description: "Sichere, lade und rebuild deine Datenbank."
+                                description: "Sichere, lade und rebuilde deine Datenbank."
 
                                 ColumnLayout {
                                     Layout.fillWidth: true
                                     Layout.fillHeight: true
                                     spacing: -3
+
+                                    RowLayout {
+                                        Layout.fillWidth: true
+                                        Layout.fillHeight: true
+                                        Layout.margins: 0
+                                        spacing: 8
+
+                                                                                AnimatedCommandButton {
+                                            Layout.fillWidth: true
+                                            Layout.fillHeight: true
+                                            Layout.margins: 0
+                                            text: "Rebuild Database"
+                                            iconText: "↻"
+                                            Accessible.name: text
+                                            running: dashboardRoot.activeCommandButton === "rebuildDb"
+                                            enabled: !dashboardRoot.commandRunning &&
+                                                     dashboardRoot.kiSoftOneActive &&
+                                                     !dashboardRoot.repositoryInstallPending
+                                            clickHandler: function() {
+                                                dashboardRoot.runPreset("rebuildDb",
+                                                    "Datenbank wird rebuilded ...", "rebuildDb")
+                                            }
+                                        }                                  
+                                    }
 
                                     RowLayout {
                                         Layout.fillWidth: true
@@ -1446,30 +1540,6 @@ ApplicationWindow {
                                             clickHandler: function() {
                                                 if (!dashboardRoot.commandRunning)
                                                     restoreConfirmation.open()
-                                            }
-                                        }
-                                    }
-
-                                    RowLayout {
-                                        Layout.fillWidth: true
-                                        Layout.fillHeight: true
-                                        Layout.margins: 0
-                                        spacing: 8
-
-                                        AnimatedCommandButton {
-                                            Layout.fillWidth: true
-                                            Layout.fillHeight: true
-                                            Layout.margins: 0
-                                            text: "Rebuild Database"
-                                            iconText: "↻"
-                                            Accessible.name: text
-                                            running: dashboardRoot.activeCommandButton === "rebuildDb"
-                                            enabled: !dashboardRoot.commandRunning &&
-                                                     dashboardRoot.kiSoftOneActive &&
-                                                     !dashboardRoot.repositoryInstallPending
-                                            clickHandler: function() {
-                                                dashboardRoot.runPreset("rebuildDb",
-                                                    "Datenbank wird rebuilded ...", "rebuildDb")
                                             }
                                         }
                                     }
@@ -1969,6 +2039,9 @@ ApplicationWindow {
                 target: appController
 
                 function onCommandCompleted(standardOutput, standardError, exitStatus) {
+                    if (!appRoot.visible)
+                        appRoot.hasUnseenCommandResult = true
+
                     if (dashboardRoot.liveOutputChunkCount === 0 &&
                             standardOutput.length > 0) {
                         dashboardRoot.appendOutput(standardOutput)
@@ -1986,12 +2059,20 @@ ApplicationWindow {
                         commandError.text = ""
                     }
 
+                    const keepSetupPassword =
+                            exitStatus === 0 &&
+                            dashboardRoot.activeCommandButton === "setupRepository" &&
+                            dashboardRoot.repositoryInstallPending
                     dashboardRoot.activeCommandButton= ""
-                    dashboardRoot.clearOraclePasswordCache()
+                    if (!keepSetupPassword)
+                        dashboardRoot.clearOraclePasswordCache()
                     dashboardRoot.clearGitCredentialsCache()
                 }
 
                 function onCommandFailed(message) {
+                    if (!appRoot.visible)
+                        appRoot.hasUnseenCommandResult = true
+
                     commandError.text = message
                     dashboardRoot.appendOutput("\n[Fehler] " + message + "\n")
                     dashboardRoot.finishOutput()
@@ -2002,6 +2083,9 @@ ApplicationWindow {
                 }
 
                 function onCommandCancelled() {
+                    if (!appRoot.visible)
+                        appRoot.hasUnseenCommandResult = true
+
                     commandError.text = ""
                     dashboardRoot.appendOutput("\n[Befehl abgebrochen]\n")
                     dashboardRoot.finishOutput()
@@ -2020,6 +2104,9 @@ ApplicationWindow {
                                              dashboardRoot.activeCommandButton === "reinstallDb" ||
                                              dashboardRoot.activeCommandButton === "installRepository" ||
                                              dashboardRoot.activeCommandButton === "reinstallNavigator"
+                    const setupRepositoryCommand =
+                            dashboardRoot.activeCommandButton === "setupRepository" ||
+                            dashboardRoot.activeCommandButton === "installRepository"
                     const askForUsername = lowerPrompt.includes("please provide your git remote username") ||
                                            lowerPrompt.includes("username for 'https://");
 
@@ -2055,11 +2142,13 @@ ApplicationWindow {
                         return;
                     }
                     // Caching Password for following klassx password requirements
-                    if ((oracleCommand || reinstallCommand || dashboardRoot.activeCommandButton === "setupRepository") && lowerPrompt.includes("password")) {
+                    if ((oracleCommand || reinstallCommand || setupRepositoryCommand) && lowerPrompt.includes("password")) {
                         const isSudoPrompt = lowerPrompt.includes("sudo") &&
-                                             lowerPrompt.includes("for klassx")
+                                             lowerPrompt.includes("klassx")
                         const password = isSudoPrompt
-                                         ? dashboardRoot.oracleSudoPasswordCache
+                                         ? setupRepositoryCommand
+                                             ? dashboardRoot.setupRepositorySudoPasswordCache
+                                             : dashboardRoot.oracleSudoPasswordCache
                                          : dashboardRoot.oracleBackupPasswordCache
                         if (password.length > 0) {
                             appController.submitCommandInput(password)
@@ -2115,12 +2204,23 @@ ApplicationWindow {
                               : TextInput.Normal
                     onAccepted: commandInputDialog.accept()
                 }
-            
 
             onAccepted: {
-                appController.submitCommandInput(commandInputField.text)
-                commandInputField.clear()
-            }
+                    const input = commandInputField.text
+                    const lowerPrompt = commandInputDialog.prompt.toLowerCase()
+                    const setupRepositoryCommand =
+                            dashboardRoot.activeCommandButton === "setupRepository" ||
+                            dashboardRoot.activeCommandButton === "installRepository"
+                    if (setupRepositoryCommand &&
+                            commandInputDialog.secret &&
+                            lowerPrompt.includes("sudo") &&
+                            lowerPrompt.includes("klassx")) {
+                        dashboardRoot.setupRepositorySudoPasswordCache = input
+                    }
+
+                    appController.submitCommandInput(input)
+                    commandInputField.clear()
+                }
 
             onRejected: {
                 commandInputField.clear()
@@ -2168,6 +2268,8 @@ ApplicationWindow {
                 "Repository wird installiert ...",
                 "installRepository")
         }
+
+        onRejected: dashboardRoot.clearOraclePasswordCache()
     }
         
 
@@ -2380,7 +2482,10 @@ ApplicationWindow {
         }
 
         onAccepted: {
-    dashboardRoot.oracleSudoPasswordCache = reinstallSudoPasswordField.text
+    if (buttonId === "installRepository")
+        dashboardRoot.setupRepositorySudoPasswordCache = reinstallSudoPasswordField.text
+    else
+        dashboardRoot.oracleSudoPasswordCache = reinstallSudoPasswordField.text
     reinstallSudoPasswordField.clear()
     dashboardRoot.runPreset(commandId, displayCommand, buttonId)
         }
@@ -2414,7 +2519,13 @@ ApplicationWindow {
             spacing: 10
 
             ThemedLabel {
-                text: "Login Failed!"
+            text: "Server: " + appRoot.serverContextLabel
+            color: "#9bb0c0"
+            Accessible.name: text
+        }
+
+        ThemedLabel {
+            text: "Login Failed!"
                 Accessible.name: "Login failed"
             }
 
@@ -2427,7 +2538,7 @@ ApplicationWindow {
         }
     }
 
-    Dialog {
+    ThemedDialog {
         id: favoritesSaveWarning
         anchors.centerIn: Overlay.overlay
         modal: true

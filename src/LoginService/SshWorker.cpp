@@ -791,8 +791,15 @@ void SshWorker::executePresetCommand(const QString &commandId)
         const QString installScript =
             QStringLiteral("set -e\n"
                             // Execute KXrelease for installing Kisoft-One, WCS, WMW, Gateway 
-                           "/kisoft/build/KiSoft-One/wcs/scripts/setupBuildTarget.sh\n"
+                           "if /kisoft/build/KiSoft-One/wcs/scripts/setupBuildTarget.sh; then\n"
+                           "  :\n"
+                           "else\n"
+                           "  setup_status=$?\n"
+                           "  echo \"setupBuildTarget.sh returned $setup_status; checking the current login-shell environment.\" >&2\n"
+                           "fi\n"
                            "export KX_SRC_ROOT=\"${KX_SRC_ROOT:-${WCS_ROOT%/wcs}}\"\n"
+                           "export JAVA_HOME=\"$(dirname \"$(dirname \"$(readlink -f /usr/bin/java)\")\")\"\n"
+                           "export PATH=\"$JAVA_HOME/bin:$PATH\"\n"
                            ": \"${KX_SRC_ROOT:?KX_SRC_ROOT/WCS_ROOT is not set}\"\n"
                            ": \"${KLASSX_DB_CONNECT:?KLASSX_DB_CONNECT is not set; cannot determine installation state}\"\n"
                            "export KLASSX_HOME=\"$KX_SRC_ROOT\"\n"
@@ -804,7 +811,7 @@ void SshWorker::executePresetCommand(const QString &commandId)
                            "else\n"
                            "  echo 'No WMW database detected; running first installation.'\n"
                            "  ./KXrelease.sh\n"
-                           "fi"
+                           "fi\n"
                            // Installing Navigator
                           "cd \"$KX_SRC_ROOT/afgui\" && "
                           "/usr/bin/xmkmf && "

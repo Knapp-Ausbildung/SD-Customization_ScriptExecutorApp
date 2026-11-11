@@ -46,6 +46,8 @@ class AppController : public QObject {
   Q_PROPERTY(bool repositoryInstallPending
              READ repositoryInstallPending
              NOTIFY installedRepositoryChanged)
+  Q_PROPERTY(QString serverAddress READ serverAddress NOTIFY serverAddressChanged)
+  Q_PROPERTY(QString serverName READ serverName NOTIFY serverNameChanged)
 
 public:
   // parent ist optional, aber in Qt üblich.
@@ -55,6 +57,8 @@ public:
   // READ currentScreen
   QString getCurrentScreen() const;
 
+  QString serverAddress() const;
+  QString serverName() const;
   bool isLoggedIn() const;
 
   QString installedRepository() const;
@@ -70,6 +74,7 @@ public slots: // public slots sind für QML aufrufbar.
 
   void attemptLogin(const QString &ipAdress, const QString &userName,
                     const QString &password);
+  void setServerName(const QString &name);
   void attemptLogout();
 
   // Wechsel auf Login
@@ -113,6 +118,8 @@ signals:
   // QML kann darauf reagieren und UI neu rendern.
   void currentScreenChanged();
 
+  void serverAddressChanged();
+  void serverNameChanged();
   void loggedInChanged();
   void loginFailed();
 
@@ -138,10 +145,13 @@ signals:
 
 private:
   LoginService *m_loginService;
-  
+  QString m_serverAddress;
+  QString m_serverName;
+
   void writeCommandLog(const QString &standardOutput,
                        const QString & standardError,
                        int exitStatus) const;
+  QString logsDirectoryPath() const;
   bool clearLogArchive() const;
   void offerRepositoryInstallIfReady();
   

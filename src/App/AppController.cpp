@@ -91,6 +91,37 @@ namespace {
     }
     return {};
   }
+
+  QString serverLogDirectoryName(const QString &serverName,
+                                 const QString &serverAddress) {
+    QString directoryName = serverName.trimmed();
+    if (directoryName.isEmpty()) {
+      directoryName = serverAddress.trimmed();
+    }
+
+    directoryName.replace(
+        QRegularExpression(QStringLiteral("[<>:\"/\\\\|?*\\x00-\\x1F]")),
+        QStringLiteral("_"));
+    while (directoryName.endsWith(QLatin1Char('.')) ||
+           directoryName.endsWith(QLatin1Char(' '))) {
+      directoryName.chop(1);
+    }
+
+    if (directoryName.isEmpty() ||
+        directoryName == QStringLiteral(".") ||
+        directoryName == QStringLiteral("..")) {
+      directoryName = QStringLiteral("unknown-server");
+    }
+
+    static const QRegularExpression reservedWindowsName(
+        QStringLiteral("^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])(?:\\..*)?$"),
+        QRegularExpression::CaseInsensitiveOption);
+    if (reservedWindowsName.match(directoryName).hasMatch()) {
+      directoryName.prepend(QLatin1Char('_'));
+    }
+
+    return directoryName.left(100);
+  }
 }
 
 AppController::AppController(QObject *parent) 
@@ -105,6 +136,11 @@ AppController::AppController(QObject *parent)
     emit loggedInChanged();
 
     if(success) {
+      const QString logsPath = logsDirectoryPath();
+      if (!QDir().mkpath(QDir(logsPath).filePath(QStringLiteral("archive")))) {
+        qWarning() << "Server-Log-Ordner konnte nicht erstellt werden:"
+                   << logsPath;
+      }
       openDashboard();
       loadInstalledRepositoryInfo();
     } else {
@@ -445,6 +481,14 @@ if (m_creatingOracleBackupUser) {
 
 }
 // Getter
+QString AppController::serverAddress() const {
+  return m_serverAddress;
+}
+
+QString AppController::serverName() const {
+  return m_serverName.isEmpty() ? m_serverAddress : m_serverName;
+}
+
 bool AppController::isLoggedIn() const { 
   return m_loginService->getLoggedIn(); 
 }
@@ -482,9 +526,24 @@ bool AppController::repositoryInstallPending() const {
 void AppController::attemptLogin(const QString &ipAdress,
                                  const QString &username,
                                  const QString &password) {
-
+  if (m_serverAddress != ipAdress) {
+    m_serverAddress = ipAdress;
+    emit serverAddressChanged();
+    emit serverNameChanged();
+  }
+                             
   m_loginService->login(ipAdress, username, password);
 }
+
+void AppController::setServerName(const QString &name) {
+  if (m_serverName == name) {
+    return;
+  }
+
+  m_serverName = name;
+  emit serverNameChanged();
+}
+
 void AppController::confirmHostKey() {
   m_loginService->confirmHostKey();
 }
@@ -544,7 +603,7 @@ void AppController::submitCommandInput(const QString &input) {
 void AppController::writeCommandLog(const QString &standardOutput,
                                     const QString &standardError,
                                     int exitStatus) const {
-  const QString logsPath = QDir::current().filePath("logs");
+  const QString logsPath = logsDirectoryPath();
 
   QDir logsDir;
 
@@ -554,7 +613,7 @@ void AppController::writeCommandLog(const QString &standardOutput,
   }
 
   const bool needsArchive = exitStatus != 0;
-  const QString archivePath = QDir(logsPath).filePath("archive");
+  const QString archivePath = QDir(logsPath).filePath(QStringLiteral("archive"));
 
   if (needsArchive && !logsDir.mkpath(archivePath)) {
     qWarning() << "Archiv-Ordner konnte nicht erstellt werden: " << archivePath;
@@ -564,7 +623,7 @@ void AppController::writeCommandLog(const QString &standardOutput,
   const QString timestamp = QDateTime::currentDateTime().toString("dd-MM-yyyy-HH-mm-ss");
   const QString baseName = QString("%1_exit_%2").arg(timestamp).arg(exitStatus);
 
-  const QString logFilePath = QDir(logsPath).filePath("latest.log");
+  const QString logFilePath = QDir(logsPath).filePath(QStringLiteral("latest.log"));
   
   // If there are mutliple commands at the same time they are getting numbered
 
@@ -600,8 +659,15 @@ void AppController::writeCommandLog(const QString &standardOutput,
   }
 }
 
+QString AppController::logsDirectoryPath() const {
+  const QString directoryName =
+      serverLogDirectoryName(serverName(), serverAddress());
+  return QDir(QDir::current().filePath(QStringLiteral("logs")))
+      .filePath(directoryName);
+}
+
 void AppController::openLogsFolder() {
-  const QString logsPath = QDir::current().absoluteFilePath("logs");
+  const QString logsPath = logsDirectoryPath();
 
   if(!QDir().mkpath(logsPath)) {
     qWarning() << "Log-Ordner konnte nicht erstellt werden: " << logsPath;
@@ -844,7 +910,8 @@ void AppController::installDownloadedRepository() {
 }
 
 bool AppController::clearLogArchive() const {
-  const QString archivePath = QDir::current().filePath("logs/archive");
+  const QString archivePath =
+      QDir(logsDirectoryPath()).filePath(QStringLiteral("archive"));
   const QDir archiveDir(archivePath);
 
   if (!QFileInfo::exists(archivePath)) {

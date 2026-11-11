@@ -45,6 +45,8 @@ src/LoginService/LoginService.hpp
 src/LoginService/LoginService.cpp
 src/LoginService/SshWorker.hpp
 src/LoginService/SshWorker.cpp
+src/App/SessionManager.hpp
+src/App/SessionManager.cpp
 
 )
 
