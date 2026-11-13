@@ -790,6 +790,21 @@ void SshWorker::executePresetCommand(const QString &commandId)
         requestPty = true;
         const QString installScript =
             QStringLiteral("set -e\n"
+                           "stop_if_active() {\n"
+                           "  local unit=\"$1\" status=0\n"
+                           "  sudo systemctl is-active --quiet \"$unit\" || status=$?\n"
+                           "  case \"$status\" in\n"
+                           "    0) sudo systemctl stop \"$unit\" ;;\n"
+                           "    3|4) echo \"$unit is inactive or not installed; skipping stop.\" ;;\n"
+                           "    *) return \"$status\" ;;\n"
+                           "  esac\n"
+                           "}\n"
+                           "export KX_SRC_ROOT=\"${KX_SRC_ROOT:-${WCS_ROOT%/wcs}}\"\n"
+                           ": \"${KX_SRC_ROOT:?KX_SRC_ROOT/WCS_ROOT is not set}\"\n"
+                           "stop_if_active keycloak-container.service\n"
+                           "stop_if_active container-kigateway.service\n"
+                           "stop_if_active nginx-kisoft-one.service\n"
+                           "stop_if_active tomcat9.service\n"
                             // Execute KXrelease for installing Kisoft-One, WCS, WMW, Gateway 
                            "if /kisoft/build/KiSoft-One/wcs/scripts/setupBuildTarget.sh; then\n"
                            "  :\n"
@@ -797,10 +812,9 @@ void SshWorker::executePresetCommand(const QString &commandId)
                            "  setup_status=$?\n"
                            "  echo \"setupBuildTarget.sh returned $setup_status; checking the current login-shell environment.\" >&2\n"
                            "fi\n"
-                           "export KX_SRC_ROOT=\"${KX_SRC_ROOT:-${WCS_ROOT%/wcs}}\"\n"
+                           // On some systems the JAVA_HOME is not set
                            "export JAVA_HOME=\"$(dirname \"$(dirname \"$(readlink -f /usr/bin/java)\")\")\"\n"
                            "export PATH=\"$JAVA_HOME/bin:$PATH\"\n"
-                           ": \"${KX_SRC_ROOT:?KX_SRC_ROOT/WCS_ROOT is not set}\"\n"
                            ": \"${KLASSX_DB_CONNECT:?KLASSX_DB_CONNECT is not set; cannot determine installation state}\"\n"
                            "export KLASSX_HOME=\"$KX_SRC_ROOT\"\n"
                            "cd \"$KX_SRC_ROOT/test/tool\"\n"
@@ -812,15 +826,19 @@ void SshWorker::executePresetCommand(const QString &commandId)
                            "  echo 'No WMW database detected; running first installation.'\n"
                            "  ./KXrelease.sh\n"
                            "fi\n"
-                           // Installing Navigator
-                          "cd \"$KX_SRC_ROOT/afgui\" && "
-                          "/usr/bin/xmkmf && "
-                          "make release &&"
-                          "sudo systemctl restart keycloak-container.service &&"
-                          "sudo systemctl restart container-kigateway.service &&" 
-                          "sudo systemctl start nginx-kisoft-one.service &&"
-                          "sudo systemctl restart nginx-kisoft-one.service &&"
-                          "sudo systemctl start tomcat9.service"
+                          // Reinstall Navigator and restart its services
+                          "cd \"$KX_SRC_ROOT/afgui\"\n"
+                          "stop_if_active keycloak-container.service\n"
+                          "stop_if_active container-kigateway.service\n"
+                          "stop_if_active nginx-kisoft-one.service\n"
+                          "stop_if_active tomcat9.service\n"
+                          "yes y | make uninstall\n"
+                          "/usr/bin/xmkmf\n"
+                          "make release\n"
+                          "sudo systemctl restart keycloak-container.service\n"
+                          "sudo systemctl restart container-kigateway.service\n"
+                          "sudo systemctl restart nginx-kisoft-one.service\n"
+                          "sudo systemctl restart tomcat9.service\n"
                           // Setting up the correct hosts for the stations in /etc/hosts
                           );
 
@@ -839,14 +857,30 @@ void SshWorker::executePresetCommand(const QString &commandId)
 
     } else if (commandId == "reinstallNavigator") {
       requestPty = true;
-      command = "bash -lc 'cd \"$KX_SRC_ROOT/afgui\" && "
-                 "/usr/bin/xmkmf && "
-                 "make release &&"
-                 "sudo systemctl restart keycloak-container.service &&"
-                 "sudo systemctl restart container-kigateway.service &&" 
-                 "sudo systemctl start nginx-kisoft-one.service &&"
-                 "sudo systemctl restart nginx-kisoft-one.service &&"
-                 "sudo systemctl start tomcat9.service'";
+      const QString navigatorScript =
+          QStringLiteral("set -e\n"
+                         "stop_if_active() {\n"
+                         "  local unit=\"$1\" status=0\n"
+                         "  sudo systemctl is-active --quiet \"$unit\" || status=$?\n"
+                         "  case \"$status\" in\n"
+                         "    0) sudo systemctl stop \"$unit\" ;;\n"
+                         "    3|4) echo \"$unit is inactive or not installed; skipping stop.\" ;;\n"
+                         "    *) return \"$status\" ;;\n"
+                         "  esac\n"
+                         "}\n"
+                         "cd \"$KX_SRC_ROOT/afgui\"\n"
+                         "stop_if_active keycloak-container.service\n"
+                         "stop_if_active container-kigateway.service\n"
+                         "stop_if_active nginx-kisoft-one.service\n"
+                         "stop_if_active tomcat9.service\n"
+                         "yes y | make uninstall\n"
+                         "/usr/bin/xmkmf\n"
+                         "make release\n"
+                         "sudo systemctl restart keycloak-container.service\n"
+                         "sudo systemctl restart container-kigateway.service\n"
+                         "sudo systemctl restart nginx-kisoft-one.service\n"
+                         "sudo systemctl restart tomcat9.service\n");
+      command = "bash -lc " + quoteShellArgument(navigatorScript);
 
     } else if (commandId == "reinstallDummyStations") {
       requestPty = true;

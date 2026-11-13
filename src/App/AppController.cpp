@@ -347,6 +347,7 @@ if (m_creatingOracleBackupUser) {
           m_repositoryTypeToActivateAfterReplace == QStringLiteral("KiSoft-One")) {
         m_repositoryTypePendingInstall = QStringLiteral("KiSoft-One");
         m_repositoryInstallOfferPending = true;
+        emit repositoryInstallOfferPendingChanged();
       }
 
       if (exitStatus == 0) {
@@ -521,6 +522,10 @@ QString AppController::activeRepositoryType() const {
 bool AppController::repositoryInstallPending() const {
   return !m_repositoryTypePendingInstall.isEmpty() &&
          m_activeRepositoryType == m_repositoryTypePendingInstall;
+}
+
+bool AppController::repositoryInstallOfferPending() const {
+  return m_repositoryInstallOfferPending;
 }
 
 void AppController::attemptLogin(const QString &ipAdress,
@@ -885,6 +890,7 @@ void AppController::offerRepositoryInstallIfReady() {
   }
 
   m_repositoryInstallOfferPending = false;
+  emit repositoryInstallOfferPendingChanged();
   emit repositoryInstallOffered();
 }
 

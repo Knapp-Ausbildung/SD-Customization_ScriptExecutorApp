@@ -772,6 +772,7 @@ Item {
             property var pendingOutputChunks: []
             property var outputSegments: []
             property int outputColumn: 0
+            property bool syncingOutputScrollBars: false
 
             function escapeOutputHtml(text, startingColumn) {
                 const value = String(text)
@@ -1007,6 +1008,7 @@ Item {
                 const flickable = commandOutputScroll.contentItem
                 const verticalContentHeight = Math.max(flickable.contentHeight, flickable.height)
                 const horizontalContentWidth = Math.max(flickable.contentWidth, flickable.width)
+                syncingOutputScrollBars = true
                 outputVerticalScrollBar.size = verticalContentHeight > 0
                         ? flickable.height / verticalContentHeight : 1
                 outputVerticalScrollBar.position = Math.max(
@@ -1017,6 +1019,13 @@ Item {
                 outputHorizontalScrollBar.position = Math.max(
                             0, Math.min(1 - outputHorizontalScrollBar.size,
                                         flickable.visibleArea.xPosition))
+                syncingOutputScrollBars = false
+            }
+
+            function scrollOutputToBottom() {
+                const flickable = commandOutputScroll.contentItem
+                flickable.contentY = Math.max(0, flickable.contentHeight - flickable.height)
+                syncOutputScrollBars()
             }
 
             function clearOutput() {
@@ -1065,12 +1074,7 @@ Item {
                 id: outputScrollTimer
                 interval: 16
                 repeat: false
-                onTriggered: {
-                    const outputFlickable = commandOutputScroll.contentItem
-                    outputFlickable.contentY = Math.max(
-                                0, outputFlickable.contentHeight - outputFlickable.height)
-                    dashboardRoot.syncOutputScrollBars()
-                }
+                onTriggered: dashboardRoot.scrollOutputToBottom()
             }
 
             function submitCommand() {
@@ -1111,6 +1115,30 @@ Item {
                 reinstallSudoCredentialsDialog.commandId = commandId
                 reinstallSudoCredentialsDialog.displayCommand = displayCommand
                 reinstallSudoCredentialsDialog.buttonId = buttonId
+                reinstallSudoCredentialsDialog.open()
+            }
+
+            function startRepositoryReplacement() {
+                activeCommandButton = "setupRepository"
+                commandRunning = true
+                commandError.text = ""
+                appController.replaceSelectedRepository()
+            }
+
+            function prepareRepositoryReplacement() {
+                if (commandRunning)
+                    return
+
+                if (setupRepositorySudoPasswordCache.length > 0) {
+                    startRepositoryReplacement()
+                    return
+                }
+
+                reinstallSudoCredentialsDialog.commandId = "installRepository"
+                reinstallSudoCredentialsDialog.displayCommand =
+                        "Repository wird heruntergeladen ..."
+                reinstallSudoCredentialsDialog.buttonId = "installRepository"
+                reinstallSudoCredentialsDialog.startsRepositoryReplacement = true
                 reinstallSudoCredentialsDialog.open()
             }
 
@@ -1923,7 +1951,7 @@ Item {
                                     orientation: Qt.Vertical
                                     policy: ScrollBar.AlwaysOn
                                     onPositionChanged: {
-                                        if (pressed) {
+                                        if (pressed && !dashboardRoot.syncingOutputScrollBars) {
                                             const flickable = commandOutputScroll.contentItem
                                             flickable.contentY = Math.min(
                                                         Math.max(0, flickable.contentHeight -
@@ -1966,8 +1994,7 @@ Item {
                                         dashboardRoot.syncOutputScrollBars()
                                     }
                                     function onContentHeightChanged() {
-                                        dashboardRoot.syncOutputScrollBars()
-                                        outputScrollTimer.restart()
+                                        dashboardRoot.scrollOutputToBottom()
                                     }
                                     function onWidthChanged() {
                                         dashboardRoot.syncOutputScrollBars()
@@ -2062,7 +2089,7 @@ Item {
                     const keepSetupPassword =
                             exitStatus === 0 &&
                             dashboardRoot.activeCommandButton === "setupRepository" &&
-                            dashboardRoot.repositoryInstallPending
+                            appController.repositoryInstallOfferPending
                     dashboardRoot.activeCommandButton= ""
                     if (!keepSetupPassword)
                         dashboardRoot.clearOraclePasswordCache()
@@ -2180,32 +2207,54 @@ Item {
                 id: commandInputDialog
                 anchors.centerIn: Overlay.overlay
                 modal: true
+                width: 460
                 title: secret ? "Passwort eingeben" : "Eingabe benötigt"
                 standardButtons: Dialog.Ok | Dialog.Cancel
                 enterFocusTarget: commandInputField
 
                 property string prompt: ""
                 property bool secret: false
+                readonly property string displayPrompt: formatPrompt()
 
-                contentItem: Column {
-                    spacing: 8
+                function formatPrompt() {
+                    if (!secret)
+                        return prompt
+
+                    const lowerPrompt = prompt.toLowerCase()
+                    if (lowerPrompt.includes("sudo") && lowerPrompt.includes("klassx"))
+                        return "Der Befehl benötigt das sudo-Passwort für klassx."
+
+                    let lastLine = prompt.trim()
+                    const newline = Math.max(lastLine.lastIndexOf("\n"),
+                                             lastLine.lastIndexOf("\r"))
+                    if (newline >= 0)
+                        lastLine = lastLine.substring(newline + 1).trim()
+                    return lastLine.length > 0
+                           ? lastLine : "Bitte gib das angeforderte Passwort ein."
                 }
 
-                ThemedLabel {
-                    text: commandInputDialog.prompt
+                contentItem: ColumnLayout {
+                    spacing: 12
+
+                    ThemedLabel {
+                        Layout.fillWidth: true
+                        text: commandInputDialog.displayPrompt
+                        wrapMode: Text.Wrap
+                    }
+
+                    ThemedTextField {
+                        id: commandInputField
+                        Layout.fillWidth: true
+                        placeholderText: commandInputDialog.secret
+                                        ? "Passwort eingeben" : "Eingabe hier ..."
+                        echoMode: commandInputDialog.secret
+                                  ? TextInput.Password
+                                  : TextInput.Normal
+                        onAccepted: commandInputDialog.accept()
+                    }
                 }
 
-                ThemedTextField {
-                    id: commandInputField
-                    placeholderText: commandInputDialog.secret
-                                    ? "Passwort eingeben" : "Eingabe hier ..."
-                    echoMode: commandInputDialog.secret 
-                              ? TextInput.Password 
-                              : TextInput.Normal
-                    onAccepted: commandInputDialog.accept()
-                }
-
-            onAccepted: {
+                onAccepted: {
                     const input = commandInputField.text
                     const lowerPrompt = commandInputDialog.prompt.toLowerCase()
                     const setupRepositoryCommand =
@@ -2222,11 +2271,11 @@ Item {
                     commandInputField.clear()
                 }
 
-            onRejected: {
-                commandInputField.clear()
-                appController.cancelCommand()
+                onRejected: {
+                    commandInputField.clear()
+                    appController.cancelCommand()
+                }
             }
-        }
 
         ThemedDialog {
             id: restoreConfirmation
@@ -2301,10 +2350,6 @@ Item {
             dashboardRoot.activeCommandButton= ""
         }
 
-        function onRepositoryInstallOffered() {
-            repositoryInstallConfirmation.open()
-        }
-        
         function onCommandOutputReceived(chunk) { 
             dashboardRoot.appendOutput(chunk, true)
         }
@@ -2325,13 +2370,7 @@ Item {
         target: replaceRepositoryDialog
 
         function onRepositoryReplaceRequested() {
-            if (dashboardRoot.commandRunning)
-                return
-
-            dashboardRoot.activeCommandButton = "setupRepository"
-            dashboardRoot.commandRunning = true
-            commandError.text = ""
-            appController.replaceSelectedRepository()
+            dashboardRoot.prepareRepositoryReplacement()
         }
     }
 
@@ -2463,13 +2502,16 @@ Item {
         id: reinstallSudoCredentialsDialog
         anchors.centerIn: Overlay.overlay
         modal: true
-        title: "sudo-Passwort für Reinstall"
+        title: startsRepositoryReplacement
+               ? "sudo-Passwort für Repository-Setup"
+               : "sudo-Passwort für Reinstall"
         standardButtons: Dialog.Ok | Dialog.Cancel
         enterFocusTarget: reinstallSudoPasswordField
 
         property string commandId: ""
         property string displayCommand: ""
         property string buttonId: ""
+        property bool startsRepositoryReplacement: false
 
         contentItem: ColumnLayout {
             ThemedTextField {
@@ -2482,17 +2524,26 @@ Item {
         }
 
         onAccepted: {
-    if (buttonId === "installRepository")
-        dashboardRoot.setupRepositorySudoPasswordCache = reinstallSudoPasswordField.text
-    else
-        dashboardRoot.oracleSudoPasswordCache = reinstallSudoPasswordField.text
-    reinstallSudoPasswordField.clear()
-    dashboardRoot.runPreset(commandId, displayCommand, buttonId)
+            if (buttonId === "installRepository")
+                dashboardRoot.setupRepositorySudoPasswordCache = reinstallSudoPasswordField.text
+            else
+                dashboardRoot.oracleSudoPasswordCache = reinstallSudoPasswordField.text
+
+            reinstallSudoPasswordField.clear()
+
+            if (startsRepositoryReplacement) {
+                startsRepositoryReplacement = false
+                dashboardRoot.startRepositoryReplacement()
+                return
+            }
+
+            dashboardRoot.runPreset(commandId, displayCommand, buttonId)
         }
 
         onRejected: {
-    reinstallSudoPasswordField.clear()
-    dashboardRoot.clearOraclePasswordCache()
+            startsRepositoryReplacement = false
+            reinstallSudoPasswordField.clear()
+            dashboardRoot.clearOraclePasswordCache()
         }
     }
    }

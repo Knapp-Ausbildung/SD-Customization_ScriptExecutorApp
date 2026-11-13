@@ -46,6 +46,9 @@ class AppController : public QObject {
   Q_PROPERTY(bool repositoryInstallPending
              READ repositoryInstallPending
              NOTIFY installedRepositoryChanged)
+  Q_PROPERTY(bool repositoryInstallOfferPending
+             READ repositoryInstallOfferPending
+             NOTIFY repositoryInstallOfferPendingChanged)
   Q_PROPERTY(QString serverAddress READ serverAddress NOTIFY serverAddressChanged)
   Q_PROPERTY(QString serverName READ serverName NOTIFY serverNameChanged)
 
@@ -68,6 +71,7 @@ public:
   QVariantList installedRepositories() const;
   QString activeRepositoryType() const;
   bool repositoryInstallPending() const;
+  bool repositoryInstallOfferPending() const;
   void selectInstallRepository(const QString &type);
 
 public slots: // public slots sind für QML aufrufbar.
@@ -141,6 +145,7 @@ signals:
   void remoteBranchesFailed(const QString &message);
   void installedRepositoryChanged();
   void repositoryInstallOffered();
+  void repositoryInstallOfferPendingChanged();
 
 
 private:
