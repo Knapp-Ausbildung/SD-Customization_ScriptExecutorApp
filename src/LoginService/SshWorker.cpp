@@ -820,11 +820,8 @@ void SshWorker::executePresetCommand(const QString &commandId)
                            "cd \"$KX_SRC_ROOT/test/tool\"\n"
                            "if printf 'exit\\n' | sqlplus -L \"$KLASSX_DB_CONNECT\" "
                            "2>&1 | grep -q 'Connected'; then\n"
-                           "  echo 'Existing WMW database detected; running KXrelease force reinstall.'\n"
+                           "  echo 'Running KXrelease force reinstall.'\n"
                            "  ./KXrelease.sh -f\n"
-                           "else\n"
-                           "  echo 'No WMW database detected; running first installation.'\n"
-                           "  ./KXrelease.sh\n"
                            "fi\n"
                           // Reinstall Navigator and restart its services
                           "cd \"$KX_SRC_ROOT/afgui\"\n"

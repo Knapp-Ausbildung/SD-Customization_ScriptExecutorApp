@@ -1,0 +1,34 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"type": "process",
+			"label": "Windows (WSL): Configure",
+			"command": "${workspaceFolder}/scripts/windows-build-from-wsl.sh",
+			"args": ["configure"],
+			"problemMatcher": []
+		},
+		{
+			"type": "process",
+			"label": "Windows (WSL): Build",
+			"command": "${workspaceFolder}/scripts/windows-build-from-wsl.sh",
+			"args": ["build"],
+			"group": "build",
+			"problemMatcher": []
+		},
+		{
+			"type": "process",
+			"label": "Windows (WSL): Package",
+			"command": "${workspaceFolder}/scripts/windows-build-from-wsl.sh",
+			"args": ["package"],
+			"problemMatcher": []
+		},
+		{
+			"type": "process",
+			"label": "Windows (WSL): Package and launch",
+			"command": "${workspaceFolder}/scripts/windows-build-from-wsl.sh",
+			"args": ["launch"],
+			"problemMatcher": []
+		}
+	]
+}

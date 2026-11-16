@@ -73,7 +73,7 @@ console output should be easy to recognize.
   desktop application.
 - Testing was performed on Platform 13.1.2 with KiSoft version 2.10. There are
   known issues with KiSoft 2.10 starting with Platform 14, so different
-  commands may be required due to a major change in Platform 14.
+  commands may be required due to a major changes at Platform 14.
 
 ### Target Server and Action Prerequisites
 
@@ -761,6 +761,36 @@ If a preset does not appear in the list, check that VS Code has the repository
 folder open, that CMake Tools is installed, and that the required tools and
 `MINGW_ROOT` are available in the VS Code environment. After changing Windows
 environment variables, close VS Code completely and restart it.
+
+### Optional project-specific VS Code configuration
+
+The repository provides example `settings.json`, `launch.json`, and
+`tasks.json` files in [`examples/vscode/`](examples/vscode/). These files are
+not installed automatically. To use them, copy them into a local `.vscode/`
+folder from the repository root.
+
+On Linux, macOS, or WSL:
+
+```sh
+mkdir -p .vscode
+cp examples/vscode/*.json .vscode/
+```
+
+In PowerShell:
+
+```powershell
+New-Item -ItemType Directory -Force .vscode
+Copy-Item examples/vscode/*.json .vscode/
+```
+
+Copying overwrites files with the same names in `.vscode/`. The local `.vscode/`
+folder is ignored by Git, so personal configuration is not added to commits.
+Install the **C/C++** extension (`ms-vscode.cpptools`) as well as CMake Tools
+if you want to use the launch configurations. The Windows-from-WSL tasks also
+require the tools described in
+[Variant B: Package for Windows from WSL](#variant-b-package-for-windows-from-wsl).
+If MSYS2 or GDB is installed in a different location, adjust the corresponding
+paths in `launch.json`.
 
 ## Notes for Changes
 
