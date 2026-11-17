@@ -1,6 +1,7 @@
 #include "AppController.hpp"
 #include "src/LoginService/LoginService.hpp"
 
+#include <QCoreApplication>
 #include <QDateTime>
 #include <QDir>
 #include <QFile>
@@ -667,7 +668,8 @@ void AppController::writeCommandLog(const QString &standardOutput,
 QString AppController::logsDirectoryPath() const {
   const QString directoryName =
       serverLogDirectoryName(serverName(), serverAddress());
-  return QDir(QDir::current().filePath(QStringLiteral("logs")))
+  return QDir(QDir(QCoreApplication::applicationDirPath())
+                  .filePath(QStringLiteral("logs")))
       .filePath(directoryName);
 }
 

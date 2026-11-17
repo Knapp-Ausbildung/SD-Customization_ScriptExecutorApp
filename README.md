@@ -438,10 +438,10 @@ substitute for a functional check of the resulting server or database state.
 
 ### Server-Specific Logs
 
-Logs are stored in the application's working directory under `logs/`. A
-separate subfolder is created for each server based on its favorite name; if
-there is no name, the IP address is used. Invalid filename characters are
-replaced:
+Logs are stored next to the application executable under `logs/`, independent
+of the working directory used to launch the app. A separate subfolder is
+created for each server based on its favorite name; if there is no name, the IP
+address is used. Invalid filename characters are replaced:
 
 ```text
 logs/

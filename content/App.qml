@@ -2194,11 +2194,6 @@ Item {
                     commandInputDialog.open()
                 }
 
-                function onInstalledRepositoryPullStarted() {
-                    dashboardRoot.commandRunning = true
-                    commandError.text = ""
-                }
-
                 function onRepositoryInstallOffered() {
                     repositoryInstallConfirmation.open()
                 }

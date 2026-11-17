@@ -4,3 +4,4 @@
 /.vscode/
 /logs/
 CMakeUserPresets.json
+/scripts/logs
