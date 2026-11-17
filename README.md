@@ -16,9 +16,7 @@ executed from the click to the SSH server, and how to add another action button.
 - [Adding an Action Button](#adding-an-action-button)
 - [Dashboard Buttons](#dashboard-buttons)
 - [Caching Passwords and Credentials](#caching-passwords-and-credentials)
-- [Build and Run on Linux](#build-and-run-on-linux)
-- [Package the Windows Executable](#package-the-windows-executable)
-- [Build with VS Code and CMake Tools](#build-with-vs-code-and-cmake-tools)
+- [Build and Installation](BUILDING.md)
 - [Notes for Changes](#notes-for-changes)
 - [Feedback](#feedback)
 
@@ -93,20 +91,10 @@ needed depend on the selected action:
 Check the permissions and installation paths that apply to the server before
 running an action. Installation and restore actions can change the server state.
 
-### For Development and Building
+### Build and Installation
 
-- CMake `3.21.1` or newer
-- A C++ compiler with C++17 support
-- Qt `6.2` or newer with Core, Gui, Qml, and Quick; as well as the Qt Quick
-  Controls/QML modules used by the interface
-- libssh
-- `pkg-config` for Linux and MinGW builds
-
-On Linux, the distribution's development files and build tools are also
-required. Windows additionally requires one of the documented toolchain
-variants: MSYS2 MinGW64, a Windows build from WSL, or Visual Studio 2022 with
-MSVC and vcpkg. Details are provided in [Build and Run on Linux](#build-and-run-on-linux)
-and [Package the Windows Executable](#package-the-windows-executable).
+See the [Build and Installation Guide](BUILDING.md) for installing dependencies
+and building on Windows, Linux, and WSL.
 
 ## C++ Conventions
 
@@ -376,7 +364,8 @@ a `sudo` command to the basic example.
 ### 3. Check and Test
 
 1. Check that the QML call and C++ mapping use exactly the same ID.
-2. Build and start the application (see [Build and Run on Linux](#build-and-run-on-linux)).
+2. Build and start the application using the
+   [Linux/WSL build guide](BUILDING.md#linux-and-wsl).
 3. Log in to a suitable test system and check the button in the appropriate
    repository state.
 4. Check both successful execution and error output and exit status.
@@ -549,248 +538,6 @@ Also connect `clearMyPasswordCache()` to the existing `onCommandCompleted`,
 `echoMode: TextInput.Password` for password input. The Git buffers are cleared
 through `clearGitCredentialsCache()` when a command ends (regardless of exit
 code), fails, or is canceled. New buffers should follow the same pattern.
-
-## Build and Run on Linux
-
-CMake 3.21.1 or newer, a C++17-capable compiler, Qt 6.2 or newer, libssh, and
-pkg-config are required. The project uses the `linux-dev` CMake preset:
-
-```bash
-cmake --preset linux-dev
-cmake --build --preset linux-dev --parallel
-./build/linux-dev/ScriptExecutorApp
-```
-
-On Ubuntu/Debian, `scripts/dependencyInstaller.sh` can install the required
-packages. The script requires `sudo` and also performs a system upgrade
-(`apt upgrade`); review it before running and consider the effects on the system.
-
-In VS Code, select the CMake Tools `linux-dev` preset. **Build** and **Launch**
-are then available through CMake Tools.
-
-## Package the Windows Executable
-
-The CMake target `package_windows` builds the application and places the `.exe`
-together with Qt/QML plugins and the required runtime DLLs in a folder. To
-distribute the application, share or zip the entire `windows-package` folder,
-not just the `.exe`. The application runs locally on Windows; SSH commands
-still run on the connected server.
-
-### Variant A: Native Windows with MSYS2 MinGW64
-
-These steps use the `windows-mingw64` preset. It expects MSYS2 in the standard
-path `C:\msys64\mingw64`. Qt, libssh, the compiler, and build tools must all
-come from the same MINGW64 environment; do not mix in MSVC packages.
-
-1. Install MSYS2 from [msys2.org](https://www.msys2.org/) at the standard path
-   `C:\msys64`.
-2. Open **MSYS2 MINGW64** from the Start menu and install the tools:
-
-   ```bash
-   pacman -Syu
-   ```
-
-   If the update closes the terminal, open **MSYS2 MINGW64** again and install
-   the project packages:
-
-   ```bash
-   pacman -S --needed \
-     mingw-w64-x86_64-gcc \
-     mingw-w64-x86_64-cmake \
-     mingw-w64-x86_64-ninja \
-     mingw-w64-x86_64-pkgconf \
-     mingw-w64-x86_64-libssh \
-     mingw-w64-x86_64-qt6-base \
-     mingw-w64-x86_64-qt6-declarative \
-     mingw-w64-x86_64-qt6-tools
-   ```
-
-3. Open **PowerShell** and navigate to the cloned project folder. Adjust the
-   example path to your actual location:
-
-   ```powershell
-   cd "$HOME\development\ScriptExecutorApp"
-   $env:MINGW_ROOT = 'C:\msys64\mingw64'
-   $env:Path = "$env:MINGW_ROOT\bin;$env:Path"
-   ```
-
-4. Configure, build, and package:
-
-   ```powershell
-   cmake --preset windows-mingw64
-   cmake --build --preset windows-mingw64-package
-   ```
-
-5. The finished package is located here:
-
-   ```text
-   build\windows-mingw64\windows-package\
-   ```
-
-   To test it, launch `ScriptExecutorApp.exe` from this folder. To distribute
-   it, zip the entire folder. The `windows-mingw64-package` build preset runs
-   both the build and packaging steps.
-
-### Variant B: Package for Windows from WSL
-
-This variant uses native Windows build tools from a WSL workspace. Linux CMake
-cannot directly drive the MSYS2 Windows compiler; in addition, `cmd.exe`
-cannot use a WSL UNC directory as its working directory. The script therefore
-synchronizes the source files to `C:` and runs Windows CMake there with the
-`windows-mingw64-wsl` preset.
-
-Requirements are MSYS2 MinGW64 under `C:\msys64\mingw64`, enabled WSL
-interoperability, and `rsync` in WSL. Run the following from the WSL project
-folder:
-
-```bash
-./scripts/windows-build-from-wsl.sh configure
-./scripts/windows-build-from-wsl.sh build
-./scripts/windows-build-from-wsl.sh package
-./scripts/windows-build-from-wsl.sh launch
-```
-
-The same actions are available in VS Code under **Tasks: Run Task**:
-**Windows (WSL): Configure**, **Windows (WSL): Build**,
-**Windows (WSL): Package**, and **Windows (WSL): Package and launch**.
-
-The WSL source files remain the authoritative working copy. The script
-synchronizes them to `C:\Users\Public\ScriptExecutorApp-src-wsl` (excluding
-`.git`, `build`, and `CMakeLists.txt.user`). The build and package are located
-under `C:\Users\Public\ScriptExecutorApp-build\windows-mingw64-wsl`.
-For Linux builds, continue to use the `linux-dev` preset with CMake Tools.
-
-### Alternative: Visual Studio and vcpkg
-
-This variant uses the `windows-release` CMake preset with Visual Studio 2022,
-MSVC x64, Qt for MSVC, and vcpkg. Do not use MinGW64 Qt or libssh libraries
-for this build.
-
-#### 1. Install the Prerequisites
-
-Install:
-
-- **Visual Studio 2022** with the **Desktop development with C++** workload
-  (including MSVC x64 and the Windows SDK)
-- **Git for Windows**
-- **CMake 3.21.1 or newer**
-- **Qt 6.2 or newer** through the Qt Online Installer
-
-In the Qt Installer, select the Qt 6 entry **MSVC 2022 64-bit** and the Qt Base
-and Qt Declarative (QML and Qt Quick) modules. The Qt installation must also
-include `windeployqt.exe`; the packaging step uses it to collect the Qt/QML
-runtime files. Example path: `C:\Qt\6.8.3\msvc2022_64`. Replace the version and
-path in the following commands with the Qt folder actually installed.
-
-#### 2. Install vcpkg
-
-Open **Developer PowerShell for VS 2022** and run these commands once:
-
-```powershell
-git clone https://github.com/microsoft/vcpkg.git C:\vcpkg
-& 'C:\vcpkg\bootstrap-vcpkg.bat' -disableMetrics
-```
-
-The repository contains a `vcpkg.json` that declares `libssh`. When the
-project is configured, vcpkg automatically installs this dependency for the
-`x64-windows` triplet.
-
-#### 3. Configure and Package the Project
-
-Continue using **Developer PowerShell for VS 2022**, navigate to the project
-folder, and set the paths. Adjust the project and Qt paths to your installation:
-
-```powershell
-cd "$HOME\development\ScriptExecutorApp"
-$env:VCPKG_ROOT = 'C:\vcpkg'
-$env:QT_ROOT = 'C:\Qt\6.8.3\msvc2022_64'
-
-cmake --preset windows-release
-cmake --build --preset windows-release
-```
-
-During the first configuration, CMake needs internet access so that vcpkg can
-download `libssh` and any missing Qt Design Studio components. The build
-preset compiles the application and then runs the `package_windows` target.
-
-The finished package is located under:
-
-```text
-build\windows-release\windows-package\
-```
-
-Launch `ScriptExecutorApp.exe` from this folder to test the package. Distribute
-the complete folder or a ZIP of it; the `.exe` alone does not include the
-required Qt/QML files and runtime DLLs.
-
-If CMake cannot find Qt or vcpkg, first check that `QT_ROOT` points to the
-folder containing `bin\windeployqt.exe` and
-`lib\cmake\Qt6\Qt6Config.cmake`, and that `VCPKG_ROOT` points to the folder
-containing `scripts\buildsystems\vcpkg.cmake`. The variables must be set in the
-same PowerShell session in which CMake is started.
-
-## Build with VS Code and CMake Tools
-
-The **CMake Tools** extension (`ms-vscode.cmake-tools`) connects VS Code to
-CMake: it detects the configure and build presets defined in
-`CMakePresets.json`, configures the project, and provides build and launch
-actions in the status bar and command palette. It does not automatically
-install CMake, Qt, or the compiler; these tools must already be installed and
-available as described above.
-
-1. Open the project folder in VS Code.
-2. Install **CMake Tools** by Microsoft (`ms-vscode.cmake-tools`) from the
-   Extensions view. If you use **Remote - WSL**, install or enable the
-   extension in the WSL context as well.
-3. Select **CMake: [Configure Preset]** in the status bar and choose the
-   appropriate preset:
-   - `linux-dev` for a Linux build in WSL or Linux
-   - `windows-mingw64` for a native Windows build
-4. If CMake Tools asks, confirm **Configure**. You can also make the selection
-   through the command palette (`Ctrl+Shift+P`) using
-   **CMake: Select Configure Preset** and **CMake: Configure**.
-5. For a regular compile, select **CMake: Build** from the command palette or
-   use the build button in the status bar.
-6. To create a distributable Windows package, first select
-   `windows-mingw64-package` using **CMake: Select Build Preset**. Then run
-   **CMake: Build**. For Windows builds from a WSL window, use the
-   **Windows (WSL): Package** or **Windows (WSL): Package and launch** tasks
-   instead.
-
-If a preset does not appear in the list, check that VS Code has the repository
-folder open, that CMake Tools is installed, and that the required tools and
-`MINGW_ROOT` are available in the VS Code environment. After changing Windows
-environment variables, close VS Code completely and restart it.
-
-### Optional project-specific VS Code configuration
-
-The repository provides example `settings.json`, `launch.json`, and
-`tasks.json` files in [`examples/vscode/`](examples/vscode/). These files are
-not installed automatically. To use them, copy them into a local `.vscode/`
-folder from the repository root.
-
-On Linux, macOS, or WSL:
-
-```sh
-mkdir -p .vscode
-cp examples/vscode/*.json .vscode/
-```
-
-In PowerShell:
-
-```powershell
-New-Item -ItemType Directory -Force .vscode
-Copy-Item examples/vscode/*.json .vscode/
-```
-
-Copying overwrites files with the same names in `.vscode/`. The local `.vscode/`
-folder is ignored by Git, so personal configuration is not added to commits.
-Install the **C/C++** extension (`ms-vscode.cpptools`) as well as CMake Tools
-if you want to use the launch configurations. The Windows-from-WSL tasks also
-require the tools described in
-[Variant B: Package for Windows from WSL](#variant-b-package-for-windows-from-wsl).
-If MSYS2 or GDB is installed in a different location, adjust the corresponding
-paths in `launch.json`.
 
 ## Notes for Changes
 

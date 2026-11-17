@@ -54,9 +54,13 @@ qt_add_resources(ScriptExecutorApp "configuration"
     PREFIX "/"
     FILES
         qtquickcontrols2.conf
+        resources/app_icon.png
 )
 
 if (WIN32)
+    enable_language(RC)
+    target_sources(ScriptExecutorApp PRIVATE resources/app_icon.rc)
+    target_link_libraries(ScriptExecutorApp PRIVATE shell32)
     set_target_properties(ScriptExecutorApp PROPERTIES
         WIN32_EXECUTABLE TRUE
     )

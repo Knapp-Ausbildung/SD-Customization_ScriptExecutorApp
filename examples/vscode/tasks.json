@@ -3,31 +3,128 @@
 	"tasks": [
 		{
 			"type": "process",
+			"label": "Linux (WSL): Configure",
+			"command": "cmake",
+			"args": ["--preset", "linux-dev"],
+			"options": {
+				"cwd": "${workspaceFolder}"
+			},
+			"problemMatcher": []
+		},
+		{
+			"type": "process",
+			"label": "Linux (WSL): Build",
+			"command": "cmake",
+			"args": ["--build", "--preset", "linux-dev", "--parallel"],
+			"options": {
+				"cwd": "${workspaceFolder}"
+			},
+			"group": "build",
+			"problemMatcher": []
+		},
+		{
+			"type": "process",
+			"label": "Linux (WSL): Launch",
+			"command": "${workspaceFolder}/build/linux-dev/ScriptExecutorApp",
+			"options": {
+				"cwd": "${workspaceFolder}"
+			},
+			"problemMatcher": []
+		},
+		{
+			"label": "Linux (WSL): Build and launch",
+			"dependsOrder": "sequence",
+			"dependsOn": [
+				"Linux (WSL): Configure",
+				"Linux (WSL): Build",
+				"Linux (WSL): Launch"
+			],
+			"problemMatcher": []
+		},
+		{
+			"type": "process",
+			"label": "Windows: Configure (MSYS2)",
+			"command": "powershell.exe",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-File",
+				"${workspaceFolder}\\scripts\\windows-build.ps1",
+				"configure"
+			],
+			"problemMatcher": []
+		},
+		{
+			"type": "process",
+			"label": "Windows: Build (MSYS2)",
+			"command": "powershell.exe",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-File",
+				"${workspaceFolder}\\scripts\\windows-build.ps1",
+				"build"
+			],
+			"group": "build",
+			"problemMatcher": []
+		},
+		{
+			"type": "process",
+			"label": "Windows: Package (MSYS2)",
+			"command": "powershell.exe",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-File",
+				"${workspaceFolder}\\scripts\\windows-build.ps1",
+				"package"
+			],
+			"problemMatcher": []
+		},
+		{
+			"type": "process",
+			"label": "Windows: Package and launch (MSYS2)",
+			"command": "powershell.exe",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-File",
+				"${workspaceFolder}\\scripts\\windows-build.ps1",
+				"launch"
+			],
+			"problemMatcher": []
+		},
+		{
+			"type": "process",
 			"label": "Windows (WSL): Configure",
-			"command": "${workspaceFolder}/scripts/windows-build-from-wsl.sh",
-			"args": ["configure"],
+			"command": "bash",
+			"args": ["${workspaceFolder}/scripts/windows-build-from-wsl.sh", "configure"],
 			"problemMatcher": []
 		},
 		{
 			"type": "process",
 			"label": "Windows (WSL): Build",
-			"command": "${workspaceFolder}/scripts/windows-build-from-wsl.sh",
-			"args": ["build"],
+			"command": "bash",
+			"args": ["${workspaceFolder}/scripts/windows-build-from-wsl.sh", "build"],
 			"group": "build",
 			"problemMatcher": []
 		},
 		{
 			"type": "process",
 			"label": "Windows (WSL): Package",
-			"command": "${workspaceFolder}/scripts/windows-build-from-wsl.sh",
-			"args": ["package"],
+			"command": "bash",
+			"args": ["${workspaceFolder}/scripts/windows-build-from-wsl.sh", "package"],
 			"problemMatcher": []
 		},
 		{
 			"type": "process",
 			"label": "Windows (WSL): Package and launch",
-			"command": "${workspaceFolder}/scripts/windows-build-from-wsl.sh",
-			"args": ["launch"],
+			"command": "bash",
+			"args": ["${workspaceFolder}/scripts/windows-build-from-wsl.sh", "launch"],
 			"problemMatcher": []
 		}
 	]

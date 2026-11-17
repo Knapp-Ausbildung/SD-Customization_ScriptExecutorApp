@@ -5,6 +5,12 @@
 #include <QDir>
 #include <QStandardPaths>
 #include <QDebug>
+#include <QIcon>
+
+#ifdef Q_OS_WIN
+#include <winsock2.h>
+#include <shobjidl.h>
+#endif
 
 #include "App/SessionManager.hpp"
 
@@ -13,11 +19,22 @@
 #include "import_qml_plugins.h"
 
 int main(int argc, char *argv[]) {
+#ifdef Q_OS_WIN
+  const HRESULT appUserModelIdResult =
+      SetCurrentProcessExplicitAppUserModelID(
+          L"Knapp-Ausbildung.ScriptExecutorApp");
+  if (FAILED(appUserModelIdResult)) {
+    qWarning() << "Could not set Windows AppUserModelID:"
+               << appUserModelIdResult;
+  }
+#endif
+
   // Qt-Umgebung vorbereiten.
   // Das ist für die richtige Asset-/Resource-Initialisierung wichtig.
   set_qt_environment();
 
   QGuiApplication app(argc, argv);
+  QGuiApplication::setWindowIcon(QIcon(QStringLiteral(":/resources/app_icon.png")));
   QCoreApplication::setApplicationVersion(
       QStringLiteral(SCRIPT_EXECUTOR_APP_VERSION));
 
