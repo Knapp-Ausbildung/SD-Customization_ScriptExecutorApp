@@ -10,20 +10,74 @@ All builds require CMake 3.21.1 or newer, a C++17-capable compiler, Qt 6.2 or
 newer with Core, Gui, Qml, and Quick, and libssh. WSL and MinGW builds also
 require `pkg-config`.
 
-## Which workflow should I use?
+## Build with VS Code and CMake Tools
 
-| What you want to do | Where to run it | Command | Helper needed |
-| --- | --- | --- | --- |
-| Build and launch the Linux app | WSL | `cmake --preset linux-dev`, then `cmake --build --preset linux-dev --parallel` and `./build/linux-dev/ScriptExecutorApp` | No script; use the `linux-dev` preset |
-| Package the Windows app from WSL | WSL | `bash scripts/windows-build-from-wsl.sh package` | [windows-build-from-wsl.sh](scripts/windows-build-from-wsl.sh) |
-| Package and launch the Windows app from WSL | WSL | `bash scripts/windows-build-from-wsl.sh launch` | [windows-build-from-wsl.sh](scripts/windows-build-from-wsl.sh) |
-| Package the Windows app from a Windows checkout | PowerShell | `.\scripts\windows-build.ps1 package` | [windows-build.ps1](scripts/windows-build.ps1) |
-| Package and launch the Windows app from a Windows checkout | PowerShell | `.\scripts\windows-build.ps1 launch` | [windows-build.ps1](scripts/windows-build.ps1) |
+This is the recommended workflow for configuring and building the app. It does
+not require a separate build script.
 
-Use the WSL shell script only from WSL; it calls Windows CMake and copies the
-WSL checkout to the Windows filesystem for packaging. Use the PowerShell
-script only from Windows. The Linux app itself is built and launched inside
-WSL with the `linux-dev` preset.
+1. Open the repository folder in VS Code and install the **CMake Tools**
+   extension. For WSL, install or enable the extension in the WSL context too.
+2. Install the dependencies for your platform:
+   - Native Windows: follow [Native Windows: MSYS2 MinGW64](#native-windows-msys2-mingw64).
+   - Linux in WSL: follow [Build and run in WSL](#build-and-run-in-wsl).
+3. Select the configure preset:
+   - `windows-mingw64` for native Windows with MSYS2
+   - `linux-dev` for the Linux app inside WSL
+4. Run **CMake: Configure**, then **CMake: Build**.
+5. To package on native Windows, use the **Windows: Package (MSYS2)** task.
+   To package and launch, use **Windows: Package and launch (MSYS2)**. These
+   tasks call CMake directly. They are provided in
+   [`examples/vscode/tasks.json`](examples/vscode/tasks.json) and are not
+   installed automatically. Copy `examples/vscode/tasks.json` into the
+   workspace's `.vscode` folder, then reload the window.
+6. In WSL, the example tasks **Linux (WSL): Build and launch** and
+   **Windows (WSL): Package** / **Windows (WSL): Package and launch** are
+   available after copying the example task file. Run the Windows (WSL) tasks
+   from a WSL window.
+
+If a preset does not appear, check that VS Code has the repository folder open,
+CMake Tools is installed in the active context, and the required tools are
+available. The first native Windows configure needs internet access to
+download the Qt Design Studio components.
+
+## Native Windows: MSYS2 MinGW64
+
+This is the recommended native Windows toolchain. The `windows-mingw64` preset
+expects MSYS2 in `C:\msys64\mingw64`. Qt, libssh, the compiler, and build tools
+must all come from the same MINGW64 environment; do not mix these with MSVC
+packages.
+
+1. Install MSYS2 from [msys2.org](https://www.msys2.org/) at `C:\msys64`.
+2. Open **MSYS2 MINGW64** from the Start menu and update the package database:
+
+   ```bash
+   pacman -Syu
+   ```
+
+   If the update closes the terminal, open **MSYS2 MINGW64** again and install
+   the project packages:
+
+   ```bash
+   pacman -S --needed \
+     mingw-w64-x86_64-gcc \
+     mingw-w64-x86_64-cmake \
+     mingw-w64-x86_64-ninja \
+     mingw-w64-x86_64-pkgconf \
+     mingw-w64-x86_64-libssh \
+     mingw-w64-x86_64-qt6-base \
+     mingw-w64-x86_64-qt6-declarative \
+     mingw-w64-x86_64-qt6-tools
+   ```
+
+3. Follow [Build with VS Code and CMake Tools](#build-with-vs-code-and-cmake-tools)
+   to configure and build. Use **Windows: Package (MSYS2)** to create the
+   distributable package.
+
+The package is created in
+`build\windows-mingw64\windows-package\`. Distribute the complete folder or a
+ZIP of it, not just the executable. If the first Qt Design Studio component
+download is interrupted, remove `build\windows-mingw64` in the VS Code
+Explorer and run the package task again.
 
 ## Build and run in WSL
 
@@ -58,8 +112,8 @@ sudo apt install -y \
   pkg-config
 ```
 
-From the project directory in the WSL filesystem, configure, build, and run
-the app:
+If you are not using the VS Code workflow, configure, build, and run from the
+project directory in the WSL filesystem:
 
 ```bash
 cd ~/projects/ScriptExecutorApp
@@ -100,107 +154,13 @@ The original WSL checkout remains the source of truth. If Windows CMake is
 installed somewhere other than `C:\msys64\mingw64\bin\cmake.exe`, set
 `WINDOWS_CMAKE_EXE` in WSL to its mounted path.
 
-## Native Windows: MSYS2 MinGW64
-
-This is the recommended native Windows build. The `windows-mingw64` preset
-expects MSYS2 in `C:\msys64\mingw64`. Qt, libssh, the compiler, and build tools
-must all come from the same MINGW64 environment; do not mix these with MSVC
-packages.
-
-1. Install MSYS2 from [msys2.org](https://www.msys2.org/) at `C:\msys64`.
-2. Open **MSYS2 MINGW64** from the Start menu and update the package database:
-
-   ```bash
-   pacman -Syu
-   ```
-
-   If the update closes the terminal, open **MSYS2 MINGW64** again and install
-   the project packages:
-
-   ```bash
-   pacman -S --needed \
-     mingw-w64-x86_64-gcc \
-     mingw-w64-x86_64-cmake \
-     mingw-w64-x86_64-ninja \
-     mingw-w64-x86_64-pkgconf \
-     mingw-w64-x86_64-libssh \
-     mingw-w64-x86_64-qt6-base \
-     mingw-w64-x86_64-qt6-declarative \
-     mingw-w64-x86_64-qt6-tools
-   ```
-
-3. In PowerShell, navigate to the project folder. If MSYS2 is installed in its
-   standard location, the build script finds it automatically. Otherwise, set
-   `MINGW_ROOT` to the MSYS2 `mingw64` directory:
-
-   ```powershell
-   cd "$HOME\development\ScriptExecutorApp"
-   $env:MINGW_ROOT = 'C:\msys64\mingw64'
-   ```
-
-4. Configure and build, or build and package:
-
-   ```powershell
-   .\scripts\windows-build.ps1 configure
-   .\scripts\windows-build.ps1 build
-   .\scripts\windows-build.ps1 package
-   ```
-
-   To package and launch the application in one step:
-
-   ```powershell
-   .\scripts\windows-build.ps1 launch
-   ```
-
-The package is created in
-`build\windows-mingw64\windows-package\`. Launch `ScriptExecutorApp.exe` from
-that folder to test it. Distribute the complete folder or a ZIP of it, not
-just the executable.
-
-## Build with VS Code and CMake Tools
-
-The **CMake Tools** extension (`ms-vscode.cmake-tools`) detects the configure
-and build presets in `CMakePresets.json` and provides build and launch actions.
-It does not install CMake, Qt, or a compiler; install the required tools using
-the instructions above.
-
-1. Open the project folder in VS Code and install **CMake Tools**. For WSL,
-   install or enable the extension in the WSL context as well.
-2. Select the configure preset:
-   - `linux-dev` for building and running the Linux app in WSL
-   - `windows-mingw64` for a native Windows build with MSYS2
-3. Run **CMake: Configure**, then **CMake: Build**.
-4. In a WSL window, use the **Linux (WSL): Build and launch** task to run the
-   Linux app, or **Windows (WSL): Package** / **Windows (WSL): Package and
-   launch** to create and optionally start the Windows app.
-5. On native Windows with MSYS2, use the **Windows: Package (MSYS2)** or
-   **Windows: Package and launch (MSYS2)** task.
-
-If a preset does not appear, check that VS Code has the repository folder open,
-CMake Tools is installed, and the required tools and environment variables are
-available to VS Code. After changing Windows environment variables, restart
-VS Code.
-
-### Optional project-specific VS Code configuration
+## Optional VS Code configuration
 
 The repository provides example `settings.json`, `launch.json`, and
 `tasks.json` files in [`examples/vscode/`](examples/vscode/). They are not
-installed automatically. To use them, copy them into a local `.vscode/` folder
-from the repository root.
-
-In WSL:
-
-```sh
-mkdir -p .vscode
-cp examples/vscode/*.json .vscode/
-```
-
-In PowerShell:
-
-```powershell
-New-Item -ItemType Directory -Force .vscode
-Copy-Item examples/vscode/*.json .vscode/
-```
+installed automatically. Copy the files you need into the workspace's
+`.vscode/` folder. To enable the build tasks, copy
+`examples/vscode/tasks.json` there.
 
 Copying overwrites files with the same names in `.vscode/`. The local
 `.vscode/` folder is ignored by Git. Install the **C/C++** extension

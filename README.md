@@ -94,7 +94,8 @@ running an action. Installation and restore actions can change the server state.
 ### Build and Installation
 
 See the [Build and Installation Guide](BUILDING.md) for installing dependencies
-and building on Windows, Linux, and WSL.
+and building on Windows, Linux, and WSL. For native Windows, see the
+[Quick install](BUILDING.md#quick-install-native-windows).
 
 ## C++ Conventions
 

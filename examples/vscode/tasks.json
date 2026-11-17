@@ -44,58 +44,68 @@
 		{
 			"type": "process",
 			"label": "Windows: Configure (MSYS2)",
-			"command": "powershell.exe",
-			"args": [
-				"-NoProfile",
-				"-ExecutionPolicy",
-				"Bypass",
-				"-File",
-				"${workspaceFolder}\\scripts\\windows-build.ps1",
-				"configure"
-			],
+			"command": "C:\\msys64\\mingw64\\bin\\cmake.exe",
+			"args": ["--preset", "windows-mingw64"],
+			"options": {
+				"cwd": "${workspaceFolder}"
+			},
 			"problemMatcher": []
 		},
 		{
-			"type": "process",
 			"label": "Windows: Build (MSYS2)",
-			"command": "powershell.exe",
-			"args": [
-				"-NoProfile",
-				"-ExecutionPolicy",
-				"Bypass",
-				"-File",
-				"${workspaceFolder}\\scripts\\windows-build.ps1",
-				"build"
+			"dependsOrder": "sequence",
+			"dependsOn": [
+				"Windows: Configure (MSYS2)",
+				"Windows: Build app (MSYS2)"
 			],
 			"group": "build",
 			"problemMatcher": []
 		},
 		{
 			"type": "process",
+			"label": "Windows: Build app (MSYS2)",
+			"command": "C:\\msys64\\mingw64\\bin\\cmake.exe",
+			"args": ["--build", "--preset", "windows-mingw64", "--parallel"],
+			"options": {
+				"cwd": "${workspaceFolder}"
+			},
+			"problemMatcher": []
+		},
+		{
 			"label": "Windows: Package (MSYS2)",
-			"command": "powershell.exe",
-			"args": [
-				"-NoProfile",
-				"-ExecutionPolicy",
-				"Bypass",
-				"-File",
-				"${workspaceFolder}\\scripts\\windows-build.ps1",
-				"package"
+			"dependsOrder": "sequence",
+			"dependsOn": [
+				"Windows: Configure (MSYS2)",
+				"Windows: Create package (MSYS2)"
 			],
 			"problemMatcher": []
 		},
 		{
 			"type": "process",
+			"label": "Windows: Create package (MSYS2)",
+			"command": "C:\\msys64\\mingw64\\bin\\cmake.exe",
+			"args": ["--build", "--preset", "windows-mingw64-package", "--parallel"],
+			"options": {
+				"cwd": "${workspaceFolder}"
+			},
+			"problemMatcher": []
+		},
+		{
 			"label": "Windows: Package and launch (MSYS2)",
-			"command": "powershell.exe",
-			"args": [
-				"-NoProfile",
-				"-ExecutionPolicy",
-				"Bypass",
-				"-File",
-				"${workspaceFolder}\\scripts\\windows-build.ps1",
-				"launch"
+			"dependsOrder": "sequence",
+			"dependsOn": [
+				"Windows: Package (MSYS2)",
+				"Windows: Launch package (MSYS2)"
 			],
+			"problemMatcher": []
+		},
+		{
+			"type": "process",
+			"label": "Windows: Launch package (MSYS2)",
+			"command": "${workspaceFolder}\\build\\windows-mingw64\\windows-package\\ScriptExecutorApp.exe",
+			"options": {
+				"cwd": "${workspaceFolder}\\build\\windows-mingw64\\windows-package"
+			},
 			"problemMatcher": []
 		},
 		{
